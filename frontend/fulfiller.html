@@ -1079,17 +1079,58 @@ function clearEmpChat(){
 function initEmployeePage(){
   WeaverEvents.on(handleFulfillerEvent);
   startGHPolling();
+  preloadSidebar();
+  // Fire any pending event from Fulfiller
+  if(pendingFulfillerEvent){
+    const e = pendingFulfillerEvent;
+    pendingFulfillerEvent = null;
+    setTimeout(()=> fireEmpEvent(e.type, e.name, e.asset, e.ref), 800);
+  }
+}
+
+function fireEmpEvent(type, name, asset, ref){
+  if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
+  else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
+  else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
+  else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+}
+
+function preloadSidebar(){
+  const list = document.getElementById('empReqList');
+  if(!list) return;
+  // Clear placeholder
+  list.innerHTML = '';
+  // Show Laptop Assignment as PENDING (raised by HR before Priya joined)
+  empRN++;
+  const id = empRN;
+  empReqs.push({id, label:'Laptop Assignment', status:'pending'});
+  list.innerHTML = `<div class="eri active" id="eri-${id}">
+    <div class="eri-top">
+      <span class="eri-name">Laptop Assignment</span>
+      <span class="eri-badge erb-prog" id="erib-${id}">PENDING</span>
+    </div>
+    <div class="eri-time">Raised by HR · Today</div>
+  </div>`;
 }
 
 async function handleFulfillerEvent(type, data){
-  if(currentRole !== 'employee') return;
   await sleep(600);
 
   if(type === 'laptop_assigned'){
-    empRN++;const id=empRN;const ref=`WVR-${String(id).padStart(4,'0')}`;
-    empReqs.push({id,label:'Laptop Assignment',status:'done'});
-    addEmpSidebar(id,'Laptop Assignment','erb-done','ASSIGNED');
-    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">💻 Your laptop is ready — ${data.asset}</div><div class="tc-body2">Hi ${data.name}, your laptop has been assigned.<br><br><strong style="color:#e8e8f4;">Model:</strong> ${data.model||'MacBook Pro 14 M3'}<br><strong style="color:#e8e8f4;">Tag:</strong> ${data.asset}<br><strong style="color:#e8e8f4;">Pickup:</strong> Hyderabad DT Desk · Floor 2</div><button class="tc-btn2" onclick="this.textContent='✓ On my way!'">Acknowledge</button></div>`);
+    // Find the pending laptop assignment in sidebar and close it
+    const req = empReqs.find(r=>r.label==='Laptop Assignment'&&r.status==='pending');
+    if(req){
+      updateEmpBadge(req.id,'erb-done','DONE');
+      req.status='done';
+    } else {
+      // Add to sidebar as done
+      empRN++;
+      const id=empRN;
+      empReqs.push({id,label:'Laptop Assignment',status:'done'});
+      addEmpSidebar(id,'Laptop Assignment','erb-done','DONE');
+    }
+    // Now show Teams notification in chat
+    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">💻 Your laptop is ready — ${data.asset||'TAG-00581'}</div><div class="tc-body2">Hi Priya, your laptop has been assigned.<br><br><strong style="color:#e8e8f4;">Model:</strong> ${data.model||'MacBook Pro 14 M3'}<br><strong style="color:#e8e8f4;">Tag:</strong> ${data.asset||'TAG-00581'}<br><strong style="color:#e8e8f4;">Pickup:</strong> Hyderabad DT Desk · Floor 2</div><button class="tc-btn2" onclick="this.textContent='✓ On my way!'">Acknowledge</button></div>`);
     await sleep(400);
     eAddA(`Your laptop is assigned! Select the software you'd like installed:`);
     await sleep(200);
@@ -1098,22 +1139,29 @@ async function handleFulfillerEvent(type, data){
   }
 
   else if(type === 'repair_approved'){
+    // Only notify if there's an open repair request
     const req = empReqs.find(r=>r.label==='Repair Request'&&r.status==='pending');
-    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
-    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">🔧 Repair approved — ${data.ref||'WVR-0002'}</div><div class="tc-body2">Hi ${data.name}, your repair has been processed.<br><br><strong style="color:#e8e8f4;">Loaner:</strong> ${data.loaner||'TAG-00600 (MacBook Air M2)'}<br><strong style="color:#e8e8f4;">Your device:</strong> ${data.asset||'TAG-00581'} → Under Repair<br><strong style="color:#e8e8f4;">ETA:</strong> 3–5 business days</div><button class="tc-btn2" onclick="this.textContent='✓ Got it'">Acknowledge</button></div>`);
+    if(!req) return; // no open repair — ignore
+    updateEmpBadge(req.id,'erb-done','DONE');
+    req.status='done';
+    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">🔧 Repair approved — ${data.ref||''}</div><div class="tc-body2">Hi Priya, your repair has been processed.<br><br><strong style="color:#e8e8f4;">Loaner:</strong> ${data.loaner||'TAG-00600 (MacBook Air M2)'}<br><strong style="color:#e8e8f4;">Your device:</strong> TAG-00581 → Under Repair<br><strong style="color:#e8e8f4;">ETA:</strong> 3–5 business days</div><button class="tc-btn2" onclick="this.textContent='✓ Got it'">Acknowledge</button></div>`);
     setEmpQR();
   }
 
   else if(type === 'return_processed'){
-    const req = empReqs.find(r=>r.label==='Laptop Return'&&r.status==='auto');
-    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
+    const req = empReqs.find(r=>r.label==='Laptop Return'&&(r.status==='pending'||r.status==='auto'));
+    if(!req) return;
+    updateEmpBadge(req.id,'erb-done','DONE');
+    req.status='done';
     eAddA(`✓ Your laptop return has been confirmed by the DT team.`);
     setEmpQR();
   }
 
   else if(type === 'refresh_processed'){
-    const req = empReqs.find(r=>r.label==='Laptop Refresh'&&r.status==='auto');
-    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
+    const req = empReqs.find(r=>r.label==='Laptop Refresh'&&(r.status==='pending'||r.status==='auto'));
+    if(!req) return;
+    updateEmpBadge(req.id,'erb-done','DONE');
+    req.status='done';
     eAddA(`✓ Refresh approved! Your new device is being prepared.`);
     setEmpQR();
   }
@@ -1192,7 +1240,7 @@ const FSTEPS={
   repair:[{n:'Validate employee & asset'},{n:'Assess repair urgency'},{n:'Check loaner availability'},{n:'Assign loaner & flag repair'},{n:'Generate confirmation'}],
   return:[{n:'Validate employee & asset'},{n:'Check return eligibility'},{n:'Clear assignment & update status'},{n:'Flag for wiping & inspection'},{n:'Generate return confirmation'}]
 };
-let qFilterVal='all',activeFreq=null,fIssueN=9;
+let qFilterVal='all',activeFreq=null,fIssueN=9,pendingFulfillerEvent=null;
 
 // Listen for new requests from Employee
 WeaverEvents.on(function(type, data){
@@ -1372,18 +1420,12 @@ async function fApprove(id,type,name,asset){
     const num = issue.number || '?';
     fAddA(`<span style="color:var(--green)">✓ Approved — ${ref}</span><br><span style="font-size:10px;color:var(--muted);">Employee will be notified shortly.</span>`);
 
-    // Also emit locally for same-session
-    if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
-    else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
-    else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
-    else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+    // Queue event — fires when Employee page opens
+    pendingFulfillerEvent = {type, name, asset, ref};
 
   } catch(e){
     fAddA(`<span style="color:var(--green)">✓ Approved — notifying employee.</span>`);
-    if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
-    else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
-    else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
-    else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+    pendingFulfillerEvent = {type, name, asset, ref};
   }
 }
 
