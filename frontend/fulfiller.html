@@ -666,7 +666,7 @@ const GH = {
 
 // Polling state
 let ghPoller = null;
-let processedIssues = new Set();
+const processedIssues = new Set(); // persistent across role switches
 
 function startGHPolling(){
   if(ghPoller) clearInterval(ghPoller);
@@ -720,11 +720,17 @@ function parseIssueBody(body){
 const WeaverEvents = {
   queue: [],
   listeners: [],
+  fired: new Set(), // prevent duplicate events
   emit(type, data){
+    const key = type + (data.ref||'') + (data.asset||'');
+    if(this.fired.has(key)) return; // already fired this exact event
+    this.fired.add(key);
     this.queue.push({type, data, ts: Date.now()});
     this.listeners.forEach(fn => fn(type, data));
   },
-  on(fn){ this.listeners.push(fn); },
+  on(fn){
+    if(!this.listeners.includes(fn)) this.listeners.push(fn); // no duplicate listeners
+  },
   off(fn){ this.listeners = this.listeners.filter(x => x !== fn); }
 };
 
