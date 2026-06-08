@@ -583,7 +583,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
     <div class="emp-chat">
       <div class="ech-hdr">
         <div><div class="ech-title">Weaver Assistant</div><div class="ech-sub">Raise a request · Track status · Get notified</div></div>
-        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--green);"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;"></span>Online</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="clearEmpChat()" style="padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit;">Clear</button>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--green);"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;"></span>Online</div>
+        </div>
       </div>
       <div class="emp-msgs" id="empMsgs">
         <div class="ema"><div class="ewbadge"><span class="ewdot"></span>Weaver</div>
@@ -670,37 +673,47 @@ const processedIssues = new Set(); // persistent across role switches
 
 function startGHPolling(){
   if(ghPoller) clearInterval(ghPoller);
+  ghPollingStartTime = Date.now(); // only pick up issues from NOW
   ghPoller = setInterval(pollGitHub, 3000);
-  pollGitHub(); // immediate first poll
+  // Don't poll immediately - wait 3s so we don't catch old issues
 }
 
 function stopGHPolling(){
   if(ghPoller){ clearInterval(ghPoller); ghPoller=null; }
 }
 
+let ghPollingStartTime = null;
+
 async function pollGitHub(){
   if(currentRole !== 'employee') return;
   try {
     const issues = await GH.getIssues('weaver-event');
+    const now = Date.now();
     for(const issue of issues){
       if(processedIssues.has(issue.number)) continue;
+      // Only process issues created AFTER polling started (this session)
+      const issueAge = now - new Date(issue.created_at).getTime();
+      if(issueAge > 600000) { // older than 10 minutes — skip
+        processedIssues.add(issue.number); // mark as seen so we don't check again
+        continue;
+      }
+      // Must be created after this polling session started
+      if(ghPollingStartTime && new Date(issue.created_at).getTime() < ghPollingStartTime) {
+        processedIssues.add(issue.number);
+        continue;
+      }
       const labelNames = issue.labels.map(l=>l.name);
       if(labelNames.includes('weaver-event')){
         processedIssues.add(issue.number);
         const body = issue.body || '';
-        // Parse event type from issue title
         if(issue.title.includes('LAPTOP_ASSIGNED')){
-          const data = parseIssueBody(body);
-          WeaverEvents.emit('laptop_assigned', data);
+          WeaverEvents.emit('laptop_assigned', parseIssueBody(body));
         } else if(issue.title.includes('REPAIR_APPROVED')){
-          const data = parseIssueBody(body);
-          WeaverEvents.emit('repair_approved', data);
+          WeaverEvents.emit('repair_approved', parseIssueBody(body));
         } else if(issue.title.includes('RETURN_PROCESSED')){
-          const data = parseIssueBody(body);
-          WeaverEvents.emit('return_processed', data);
+          WeaverEvents.emit('return_processed', parseIssueBody(body));
         } else if(issue.title.includes('REFRESH_PROCESSED')){
-          const data = parseIssueBody(body);
-          WeaverEvents.emit('refresh_processed', data);
+          WeaverEvents.emit('refresh_processed', parseIssueBody(body));
         }
       }
     }
@@ -1055,6 +1068,14 @@ function lToggleFilter(dim,val,el){if(libFilters[dim]===val){libFilters[dim]=nul
 function libSearchFn(v){libSrch=v.toLowerCase();renderLibrary();}
 
 // ── EMPLOYEE ──
+function clearEmpChat(){
+  document.getElementById('empMsgs').innerHTML=`<div class="ema"><div class="ewbadge"><span class="ewdot"></span>Weaver</div><div class="eba">Hi Priya 👋 What can I help you with?<br><br>• 🔧 Raise a repair request<br>• ↩ Return your laptop<br>• 🔄 Request a laptop refresh<br>• 📋 Check request status</div></div>`;
+  document.getElementById('empReqList').innerHTML=`<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>`;
+  empReqs=[];empRN=0;repairPhase='';
+  WeaverEvents.fired.clear();
+  setEmpQR();
+}
+
 function initEmployeePage(){
   WeaverEvents.on(handleFulfillerEvent);
   startGHPolling();
