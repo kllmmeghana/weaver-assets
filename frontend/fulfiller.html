@@ -1,51 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weaver — Asset Management</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0e13;--surf:#111820;--surf2:#161f2a;
+  --border:#1e2a35;--border2:#2a3a4a;
+  --green:#3dffa0;--green-dim:#1a4d35;--green-bg:rgba(61,255,160,0.06);
+  --text:#e8eef4;--muted:#5a7a8a;--mid:#8aaabb;
+  --amber:#ffaa3d;--red:#ff5a5a;--blue:#5ab4ff;--purple:#b47aff;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:48px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
+.logo{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
+.logo-ring{width:20px;height:20px;border-radius:50%;border:2px solid var(--green);display:flex;align-items:center;justify-content:center;}
+.nav-tabs{display:flex;}
+.ntab{padding:0 12px;height:48px;display:flex;align-items:center;font-size:12px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;}
+.ntab:hover{color:var(--mid);}
+.ntab.active{color:var(--green);border-bottom-color:var(--green);}
+.ntab.active-blue{color:var(--blue);border-bottom-color:var(--blue);}
+.ntab.dim{opacity:0.3;}
+/* ROLE DROPDOWN */
+.role-wrap{position:relative;}
+.role-btn{display:flex;align-items:center;gap:6px;padding:5px 11px;background:var(--surf);border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:500;color:var(--text);cursor:pointer;font-family:inherit;}
+.rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.rd-a{background:var(--green);box-shadow:0 0 5px var(--green);}
+.rd-f{background:var(--amber);box-shadow:0 0 5px var(--amber);}
+.rd-e{background:var(--blue);box-shadow:0 0 5px var(--blue);}
+.role-dd{position:absolute;top:calc(100% + 6px);right:0;background:var(--surf);border:1px solid var(--border2);border-radius:10px;width:210px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.rdi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s;}
+.rdi:last-child{border-bottom:none;}
+.rdi:hover{background:rgba(255,255,255,0.03);}
+.rdi-name{font-size:12px;font-weight:500;}
+.rdi-desc{font-size:10px;color:var(--muted);margin-top:1px;}
+.hidden{display:none!important;}
+/* PAGES */
+.page{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.page.active{display:flex;}
+/* SHARED */
+.sb-sec{font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;margin-top:10px;}
+.sb-sec:first-child{margin-top:0;}
+.sb-item{display:flex;align-items:center;justify-content:space-between;padding:5px 7px;border-radius:6px;cursor:pointer;margin-bottom:2px;transition:all 0.1s;}
+.sb-item:hover{background:rgba(255,255,255,0.03);}
+.sb-item.active{background:var(--green-bg);}
+.sb-name{font-size:11px;color:var(--mid);}
+.sb-item.active .sb-name{color:var(--green);}
+.sb-n{font-size:9px;color:var(--muted);background:rgba(255,255,255,0.05);padding:1px 5px;border-radius:99px;}
+.stat{background:var(--surf2);border-radius:7px;padding:0.55rem 0.8rem;}
+.stat-val{font-size:17px;font-weight:500;}
+.stat-label{font-size:9px;color:var(--muted);margin-top:1px;}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid rgba(61,255,160,0.3);border-top-color:var(--green);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:3px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.gh{font-size:10px;color:var(--blue);text-decoration:none;}
+.ff{margin-bottom:7px;}
+.fl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.fi{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.fi:focus{border-color:var(--border2);}
+.fi::placeholder{color:var(--muted);}
+.fs{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.fs option{background:var(--surf);}
 
-Weaver Build Library Tools
-Persona: IT Admin
-Fulfiller
-WORKFLOWS
-Laptop Assignment
-5
-Laptop Return
-5
-Repair Request
-5
-Workflow Assistant
+/* ── PAGE 1: BUILD ── */
+.build-scroll{flex:1;overflow-y:auto;}
+.build-main{max-width:600px;margin:0 auto;padding:1.75rem 1.5rem 2.5rem;width:100%;}
+.hero{text-align:center;margin-bottom:1.75rem;}
+.hero-eye{font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+.hero-title{font-size:20px;font-weight:300;line-height:1.4;}
+.hero-title strong{color:var(--green);font-weight:500;}
+.hero-sub{font-size:12px;color:var(--muted);margin-top:5px;}
+.slabel{font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;margin-top:1.25rem;}
+.prompt-ta{width:100%;min-height:100px;padding:0.85rem 1rem;background:var(--surf);border:1px solid var(--green);border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;line-height:1.7;resize:none;outline:none;}
+.wf-tabs{display:flex;gap:7px;margin-top:0.85rem;flex-wrap:wrap;}
+.wftab{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.1s;font-family:inherit;}
+.wftab:hover{border-color:var(--border2);color:var(--mid);}
+.wftab.active{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+.ctx-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.ctx-card{border:1px dashed var(--border2);border-radius:9px;padding:0.85rem;background:var(--surf);}
+.ctx-title{font-size:11px;font-weight:500;color:var(--mid);margin-bottom:3px;}
+.ctx-sub{font-size:10px;color:var(--muted);margin-bottom:7px;}
+.upload-box{border:1px dashed var(--border2);border-radius:6px;padding:0.6rem;text-align:center;cursor:pointer;}
+.upload-box:hover{border-color:var(--green);}
+.url-row{display:flex;gap:6px;}
+.url-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.url-inp::placeholder{color:var(--muted);}
+.btn-add{padding:5px 9px;background:var(--green-dim);border:1px solid var(--green);color:var(--green);border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;}
+.weave-row{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:1.25rem;}
+.weave-hint{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.btn-weave{display:flex;align-items:center;gap:6px;padding:9px 20px;background:var(--green);border:none;color:#0a0e13;font-family:inherit;font-size:13px;font-weight:600;border-radius:7px;cursor:pointer;}
+.btn-weave:hover{background:#5affc0;}
 
-Online
-Try asking me:
-• Assign a laptop to a new employee
-• Process a laptop return for an offboarding employee
-• Handle a repair request for a damaged laptop
+/* ── PAGE 2: BUILDER ── */
+.builder-layout{display:flex;flex:1;overflow:hidden;}
+.builder-left{width:52%;border-right:1px solid var(--border);padding:1.25rem;overflow-y:auto;}
+.builder-right{width:48%;padding:1.1rem;overflow-y:auto;background:var(--surf2);}
+.bl-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.bl-title{font-size:13px;font-weight:500;}
+.bl-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.wf-badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-dim);}
+.thinking{display:flex;align-items:center;gap:8px;padding:0.75rem 1rem;background:rgba(90,180,255,0.05);border:1px solid rgba(90,180,255,0.15);border-radius:8px;margin-bottom:1rem;}
+.tdots{display:flex;gap:4px;}
+.tdot{width:5px;height:5px;border-radius:50%;background:var(--blue);animation:tdot 1.2s ease-in-out infinite;}
+.tdot:nth-child(2){animation-delay:0.2s;}.tdot:nth-child(3){animation-delay:0.4s;}
+@keyframes tdot{0%,80%,100%{opacity:0.2;transform:scale(0.8)}40%{opacity:1;transform:scale(1)}}
+.step-card{background:var(--surf);border:1px solid var(--border);border-radius:9px;padding:0.85rem;margin-bottom:8px;transition:border-color 0.2s;}
+.step-card.building{border-color:var(--blue);animation:bp 1.5s ease-in-out infinite;}
+@keyframes bp{0%,100%{border-color:rgba(90,180,255,0.3)}50%{border-color:var(--blue)}}
+.step-top{display:flex;align-items:flex-start;gap:9px;}
+.step-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--muted);flex-shrink:0;margin-top:1px;transition:all 0.3s;}
+.step-num.done{border-color:var(--green);color:var(--green);background:rgba(61,255,160,0.08);}
+.step-name{font-size:12px;font-weight:500;margin-bottom:3px;}
+.step-desc{font-size:10px;color:var(--muted);line-height:1.5;}
+.step-tools{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.tool-pill{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:10px;font-family:'DM Mono',monospace;border:1px solid;}
+.tp-fly{background:rgba(180,122,255,0.07);color:var(--purple);border-color:rgba(180,122,255,0.25);}
+.tp-ai{background:rgba(255,170,61,0.07);color:var(--amber);border-color:rgba(255,170,61,0.25);}
+.tp-gh{background:rgba(90,180,255,0.07);color:var(--blue);border-color:rgba(90,180,255,0.25);}
+.tool-card{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:7px;transition:all 0.2s;}
+.tool-card.building{border-color:rgba(180,122,255,0.4);}
+.tool-card.saved{border-color:var(--green-dim);}
+.tc-hdr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+.tc-ico{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tci-fly{background:rgba(180,122,255,0.12);}
+.tci-ai{background:rgba(255,170,61,0.12);}
+.tci-gh{background:rgba(90,180,255,0.12);}
+.tc-name{font-size:11px;font-weight:500;font-family:'DM Mono',monospace;}
+.tc-badge{font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:auto;}
+.tcb-fly{background:rgba(180,122,255,0.1);color:var(--purple);}
+.tcb-ai{background:rgba(255,170,61,0.1);color:var(--amber);}
+.tcb-gh{background:rgba(90,180,255,0.1);color:var(--blue);}
+.tc-desc{font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:5px;}
+.tc-code{background:var(--bg);border-radius:4px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;color:#7ec8a0;line-height:1.6;border:1px solid var(--border);white-space:pre;}
+.tc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:5px;}
+.tc-saved{font-size:9px;color:var(--green);}
+.bb{border-top:1px solid var(--border);padding:0.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;background:var(--bg);flex-shrink:0;}
+.bb-left{font-size:12px;color:var(--muted);}
+.btn-back{padding:6px 14px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;}
+.btn-deploy{padding:7px 18px;background:var(--green);border:none;color:#0a0e13;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;opacity:0.4;pointer-events:none;transition:opacity 0.3s;}
+.btn-deploy.ready{opacity:1;pointer-events:all;}
 
-Or click any workflow from the sidebar to get started.
-I'll run a full Laptop Assignment check. Please provide the employee details:
-Employee Name
-*
-Employee ID
-*
-Role
-*
-              Select role...
-              Software Engineer
-              Product Manager
-              Data Analyst
-              Sales Executive
-              HR Manager
-              Designer
-              Engineering Manager
-            
-Location
-*
-              Select location...
-              Hyderabad
-              Bangalore
-              Mumbai
-              Chennai
-            
-Start Assignment Check
+/* ── PAGE 3: REPO ── */
+.repo-layout{display:flex;flex:1;overflow:hidden;}
+.repo-sidebar{width:165px;border-right:1px solid var(--border);padding:0.85rem;flex-shrink:0;}
+.repo-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.repo-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+.repo-toolbar{padding:0.65rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.rsearch{flex:1;max-width:200px;background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.rsearch::placeholder{color:var(--muted);}
+.btn-new-wf{margin-left:auto;display:flex;align-items:center;gap:5px;padding:5px 12px;background:var(--green);border:none;color:#0a0e13;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.wf-grid{flex:1;overflow-y:auto;padding:1rem 1.1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px;align-content:start;}
+.wfc{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:0.85rem;cursor:pointer;position:relative;transition:all 0.12s;}
+.wfc:hover{border-color:var(--border2);transform:translateY(-1px);}
+.wfc.draft{border-style:dashed;opacity:0.75;}
+.new-badge{font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
+.draft-badge{font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border2);}
+.wfc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.wfc-ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.wfci-a{background:rgba(61,255,160,0.1);}
+.wfci-r{background:rgba(90,180,255,0.1);}
+.wfci-x{background:rgba(255,170,61,0.1);}
+.wfci-d{background:rgba(255,255,255,0.05);}
+.wfc-live{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--green);}
+.wfc-name{font-size:12px;font-weight:500;margin-bottom:3px;}
+.wfc-desc{font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;}
+.wfc-pips{display:flex;align-items:center;gap:3px;margin-bottom:6px;}
+.pip{width:13px;height:2px;border-radius:2px;}
+.pip-live{background:var(--green);opacity:0.6;}
+.pip-draft{background:var(--border2);}
+.wfc-footer{border-top:1px solid var(--border);padding-top:7px;display:flex;align-items:center;justify-content:space-between;}
+.wfc-runs{font-size:9px;color:var(--muted);}
+.btn-run-sm{padding:3px 9px;background:var(--green);border:none;color:#0a0e13;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-run-sm.dis{opacity:0.3;pointer-events:none;}
+.btn-edit-sm{padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;}
 
+/* ── PAGE 4: LIBRARY ── */
+.lib-layout{display:flex;flex:1;overflow:hidden;}
+.lib-sidebar{width:165px;border-right:1px solid var(--border);padding:0.85rem;flex-shrink:0;overflow-y:auto;}
+.lib-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.lib-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+.lib-toolbar{padding:0.65rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;}
+.lsearch{flex:1;max-width:180px;background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.lsearch::placeholder{color:var(--muted);}
+.lfb{padding:3px 9px;font-size:10px;font-weight:500;color:var(--muted);cursor:pointer;border:1px solid var(--border);background:transparent;border-radius:99px;font-family:inherit;transition:all 0.1s;}
+.lfb:hover{color:var(--mid);}
+.lfb.active{background:rgba(255,255,255,0.06);color:var(--text);border-color:var(--border2);}
+.lfb.lf-fly.active{background:rgba(180,122,255,0.1);color:var(--purple);border-color:rgba(180,122,255,0.3);}
+.lfb.lf-ai.active{background:rgba(255,170,61,0.1);color:var(--amber);border-color:rgba(255,170,61,0.3);}
+.lfb.lf-gh.active{background:rgba(90,180,255,0.1);color:var(--blue);border-color:rgba(90,180,255,0.3);}
+.lcnt{margin-left:auto;font-size:11px;color:var(--muted);}
+.lib-grid{flex:1;overflow-y:auto;padding:1rem 1.1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:7px;align-content:start;}
+.ltc{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:0.75rem;cursor:pointer;position:relative;transition:all 0.12s;}
+.ltc:hover{border-color:var(--border2);}
+.ltc-hdr{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.ltci{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ltci-fly{background:rgba(180,122,255,0.12);}
+.ltci-ai{background:rgba(255,170,61,0.12);}
+.ltci-gh{background:rgba(90,180,255,0.12);}
+.ltc-name{font-size:10px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text);word-break:break-all;line-height:1.3;}
+.ltc-desc{font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:6px;}
+.ltc-footer{display:flex;align-items:center;justify-content:space-between;}
+.ltp{font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;}
+.ltp-fly{background:rgba(180,122,255,0.1);color:var(--purple);}
+.ltp-ai{background:rgba(255,170,61,0.1);color:var(--amber);}
+.ltp-gh{background:rgba(90,180,255,0.1);color:var(--blue);}
+.ltc-runs{font-size:9px;color:var(--muted);}
+.lnew{position:absolute;top:6px;right:6px;font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
 
-EXECUTION
-IDLE
+/* ── PAGE 5: EMPLOYEE ── */
+.emp-layout{display:flex;flex:1;overflow:hidden;}
+.emp-sidebar{width:185px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.ep{padding:0.85rem;border-bottom:1px solid var(--border);}
+.ep-av{width:34px;height:34px;border-radius:50%;background:rgba(90,180,255,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--blue);margin-bottom:7px;}
+.ep-name{font-size:12px;font-weight:500;}
+.ep-role{font-size:10px;color:var(--muted);margin-top:1px;}
+.ep-loc{font-size:10px;color:var(--muted);margin-top:1px;}
+.emp-req-list{flex:1;overflow-y:auto;padding:0 0.6rem 0.6rem;}
+.eri{padding:6px 7px;border-radius:6px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;}
+.eri:hover{background:rgba(255,255,255,0.03);}
+.eri.active{background:rgba(90,180,255,0.06);border-color:rgba(90,180,255,0.2);}
+.eri-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1px;}
+.eri-name{font-size:11px;font-weight:500;color:var(--mid);}
+.eri.active .eri-name{color:var(--blue);}
+.eri-badge{font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;}
+.erb-new{background:rgba(90,180,255,0.1);color:var(--blue);}
+.erb-prog{background:rgba(255,170,61,0.1);color:var(--amber);}
+.erb-done{background:rgba(61,255,160,0.1);color:var(--green);}
+.erb-auto{background:rgba(180,122,255,0.1);color:var(--purple);}
+.eri-time{font-size:9px;color:var(--muted);}
+.emp-chat{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.ech-hdr{padding:0.7rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.ech-title{font-size:12px;font-weight:500;}
+.ech-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.emp-msgs{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:9px;}
+.ema{max-width:82%;}
+.emu{margin-left:auto;max-width:75%;}
+.ewbadge{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);margin-bottom:3px;}
+.ewdot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);}
+.eba{background:var(--surf);border:1px solid var(--border);border-radius:9px 9px 9px 2px;padding:8px 11px;font-size:12px;line-height:1.65;}
+.ebu{background:rgba(90,180,255,0.09);border:1px solid rgba(90,180,255,0.2);border-radius:9px 9px 2px 9px;padding:8px 11px;font-size:12px;}
+.eqr{display:flex;flex-wrap:wrap;gap:5px;padding:0.65rem 1rem;border-top:1px solid var(--border);flex-shrink:0;}
+.eqb{padding:4px 11px;background:var(--surf);border:1px solid var(--border);border-radius:99px;font-size:11px;color:var(--mid);cursor:pointer;font-family:inherit;white-space:nowrap;}
+.eqb:hover{border-color:var(--blue);color:var(--blue);}
+.einp-row{padding:0.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0;}
+.einp{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none;}
+.einp:focus{border-color:rgba(90,180,255,0.4);}
+.einp::placeholder{color:var(--muted);}
+.esend{width:32px;height:32px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.esend:hover{background:#7ac8ff;}
+.sub-card{background:var(--surf2);border:1px solid var(--border2);border-radius:9px;padding:0.8rem;max-width:280px;margin-top:3px;}
+.sc-title{font-size:11px;font-weight:500;margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+.sc-row{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid var(--border);}
+.sc-row:last-of-type{border-bottom:none;}
+.sc-label{color:var(--muted);}
+.sc-val{color:var(--text);font-weight:500;font-family:'DM Mono',monospace;font-size:9px;}
+.sc-footer{display:flex;align-items:center;margin-top:7px;}
+.sp{font-size:9px;font-weight:600;padding:2px 8px;border-radius:99px;}
+.sp-sub{background:rgba(90,180,255,0.1);color:var(--blue);border:1px solid rgba(90,180,255,0.2);}
+.sp-auto{background:rgba(180,122,255,0.1);color:var(--purple);border:1px solid rgba(180,122,255,0.2);}
+.checklist{background:var(--surf2);border:1px solid var(--green-dim);border-radius:9px;padding:0.8rem;max-width:280px;margin-top:3px;}
+.cl-title{font-size:11px;font-weight:500;margin-bottom:7px;color:var(--green);}
+.cl-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.cl-item:last-child{border-bottom:none;}
+.cl-chk{width:13px;height:13px;border-radius:3px;border:1px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.1s;}
+.cl-item.chk .cl-chk{background:var(--green);border-color:var(--green);}
+.cl-text{font-size:11px;color:var(--text);line-height:1.4;}
+.cl-item.chk .cl-text{color:var(--muted);text-decoration:line-through;}
+.cl-ref{font-size:9px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace;}
+.teams-card{background:#1f1f2e;border:1px solid #3a3a5a;border-radius:9px;padding:0.8rem;max-width:280px;margin-top:3px;}
+.tc-hdr2{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.tc-ticon{width:22px;height:22px;border-radius:4px;background:#5b5fc7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;}
+.tc-from{font-size:9px;color:#a0a0c0;}
+.tc-title2{font-size:11px;font-weight:500;color:#e8e8f4;margin-bottom:5px;}
+.tc-body2{font-size:10px;color:#a0a0c0;line-height:1.6;margin-bottom:7px;}
+.tc-btn2{padding:5px 12px;background:#5b5fc7;border:none;color:#fff;border-radius:4px;font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;}
+.tc-btn2:hover{background:#7079e0;}
+.sw-card{background:var(--surf2);border:1px solid var(--border2);border-radius:9px;padding:0.8rem;max-width:280px;margin-top:3px;}
+.sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:7px 0;}
+.swi{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--surf);border:1px solid var(--border);border-radius:5px;cursor:pointer;transition:all 0.1s;}
+.swi.on{border-color:var(--green);background:var(--green-bg);}
+.swi-ico{font-size:12px;flex-shrink:0;}
+.swi-name{font-size:10px;color:var(--text);}
+.swi-chk{width:10px;height:10px;border-radius:2px;border:1px solid var(--border);margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.swi.on .swi-chk{background:var(--green);border-color:var(--green);}
+.btn-confirm{width:100%;padding:6px;background:var(--green);border:none;color:#0a0e13;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-skip-sw{width:100%;padding:5px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit;margin-top:4px;}
 
-Select a workflow from the sidebar or ask the assistant to get started.
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:300;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surf);border:1px solid var(--border2);border-radius:13px;width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-hdr{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.mh-left{display:flex;align-items:center;gap:9px;}
+.m-ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.m-title{font-size:13px;font-weight:500;}
+.m-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;}
+.modal-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.m-info{width:260px;border-right:1px solid var(--border);padding:1rem;overflow-y:auto;flex-shrink:0;}
+.mi-sec{font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px;}
+.mi-sec:first-child{margin-top:0;}
+.mi-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:4px;}
+.mi-stat{background:var(--surf2);border-radius:5px;padding:5px 7px;}
+.mi-stat-val{font-size:14px;font-weight:500;}
+.mi-stat-label{font-size:9px;color:var(--muted);margin-top:1px;}
+.mi-step{display:flex;align-items:flex-start;gap:6px;margin-bottom:7px;}
+.mi-sn{width:15px;height:15px;border-radius:50%;background:var(--green-bg);border:1px solid var(--green-dim);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--green);flex-shrink:0;margin-top:1px;}
+.mi-sname{font-size:10px;font-weight:500;}
+.mi-stool{font-size:9px;color:var(--purple);font-family:'DM Mono',monospace;margin-top:1px;}
+.m-console{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.mc-hdr{padding:0.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.mc-title{font-size:11px;font-weight:500;color:var(--mid);}
+.esb{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;}
+.esb-idle{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border);}
+.esb-run{background:rgba(255,170,61,0.1);color:var(--amber);border:1px solid rgba(255,170,61,0.3);}
+.esb-done{background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
+.subj{margin-bottom:0.85rem;padding-bottom:0.85rem;border-bottom:1px solid var(--border);}
+.subj-name{font-size:12px;font-weight:500;}
+.subj-time{font-size:9px;color:var(--muted);margin-top:2px;font-family:monospace;}
+.sl{font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.step{margin-bottom:9px;}
+.step-hdr{display:flex;align-items:flex-start;gap:6px;margin-bottom:3px;}
+.si{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.si-p{background:rgba(61,255,160,0.12);}
+.si-w{background:rgba(255,170,61,0.12);}
+.si-r{background:rgba(90,180,255,0.12);animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.sn{font-size:11px;font-weight:500;}
+.srb{font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;margin-top:1px;display:inline-block;}
+.srb-p{background:rgba(61,255,160,0.1);color:var(--green);}
+.srb-w{background:rgba(255,170,61,0.1);color:var(--amber);}
+.sd{font-size:10px;color:var(--muted);line-height:1.5;padding-left:22px;margin-top:2px;}
+.rating{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);}
+.rl{font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.rb-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;}
+.rb-ok{background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
+.rb-warn{background:rgba(255,170,61,0.1);color:var(--amber);border:1px solid rgba(255,170,61,0.3);}
+.rs{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;}
+.btn-approve{width:100%;padding:7px;background:var(--green);border:none;color:#0a0e13;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px;display:block;}
+.btn-approve:hover{background:#5affc0;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="logo">
+    <div class="logo-ring"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#3dffa0" stroke-width="2.5"><path d="M8 12h8M12 8l4 4-4 4"/></svg></div>
+    Weaver
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <div class="ntab active" onclick="goPage('build')">Build</div>
+    <div class="ntab dim" onclick="goPage('builder')">Workflow Builder</div>
+    <div class="ntab dim" onclick="goPage('repo')">Workflow Repository</div>
+    <div class="ntab dim" onclick="goPage('library')">Library</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="role-wrap">
+      <button class="role-btn" id="roleBtn" onclick="toggleDD()">
+        <span class="rdot rd-a"></span>Admin
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="role-dd hidden" id="roleDD">
+        <div class="rdi" onclick="switchRole('admin')"><span class="rdot rd-a"></span><div><div class="rdi-name">Admin</div><div class="rdi-desc">Build · Builder · Repository · Library</div></div></div>
+        <div class="rdi" onclick="switchRole('fulfiller')"><span class="rdot rd-f"></span><div><div class="rdi-name">Fulfiller</div><div class="rdi-desc">Run & approve workflows</div></div></div>
+        <div class="rdi" onclick="switchRole('employee')"><span class="rdot rd-e"></span><div><div class="rdi-name">Employee</div><div class="rdi-desc">Chat — raise requests</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 1: BUILD -->
+<div class="page active" id="page-build">
+  <div class="build-scroll">
+    <div class="build-main">
+      <div class="hero">
+        <div class="hero-eye">Describe your workflow.</div>
+        <div class="hero-title">Weaver <strong>weaves it.</strong> Thread by thread.</div>
+        <div class="hero-sub">Natural language in. Production-ready workflows out.</div>
+      </div>
+      <div class="slabel">Describe what you want to build</div>
+      <textarea class="prompt-ta" id="promptTa" rows="4">When a new employee joins, run a full laptop asset assignment. Validate the employee and their role-based entitlement tier, check asset inventory for an available unit matching the spec and location, assign the laptop and update its status to In Use, update the CMDB with asset tag and hostname, suggest software based on their role using AI, and generate an assignment confirmation report.</textarea>
+      <div class="wf-tabs">
+        <button class="wftab active" onclick="setWF(this,'assign')">💻 Laptop Assignment</button>
+        <button class="wftab" onclick="setWF(this,'return')">↩ Laptop Return</button>
+        <button class="wftab" onclick="setWF(this,'repair')">🔧 Repair Request</button>
+        <button class="wftab" onclick="setWF(this,'refresh')">🔄 Laptop Refresh</button>
+      </div>
+      <div class="slabel" style="margin-top:1.25rem;">Add additional context</div>
+      <div class="ctx-grid">
+        <div class="ctx-card">
+          <div class="ctx-title">📄 Upload Files</div>
+          <div class="ctx-sub">Entitlement policies, asset lists, SOPs</div>
+          <div class="upload-box"><div style="font-size:11px;color:var(--muted);">↑ Click to upload</div><div style="font-size:9px;color:var(--muted);margin-top:2px;opacity:0.6;">JSON · CSV · PDF · DOCX</div></div>
+        </div>
+        <div class="ctx-card">
+          <div class="ctx-title">🔗 Add a URL</div>
+          <div class="ctx-sub">GitHub data files, knowledge articles</div>
+          <div class="url-row" style="margin-top:4px;"><input class="url-inp" placeholder="https://raw.githubusercontent.com/kllmmeghana/..."/><button class="btn-add">Add</button></div>
+        </div>
+      </div>
+      <div class="weave-row">
+        <span class="weave-hint">⌘ + ↵ to weave</span>
+        <button class="btn-weave" onclick="hitWeave()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="2.5"><path d="M8 12h8M12 8l4 4-4 4"/></svg>
+          Weave
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: BUILDER -->
+<div class="page" id="page-builder" style="flex-direction:column;">
+  <div class="builder-layout">
+    <div class="builder-left">
+      <div class="bl-hdr">
+        <div><div class="bl-title">Workflow steps</div><div class="bl-sub" id="blSub">Claude is reading your prompt...</div></div>
+        <span class="wf-badge" id="blBadge">Laptop Assignment · 6 steps</span>
+      </div>
+      <div class="thinking" id="thinking"><div class="tdots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div><span style="font-size:11px;color:var(--blue);">Analysing workflow description...</span></div>
+      <div id="stepsContainer"></div>
+    </div>
+    <div class="builder-right">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Tool Builder</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px;" id="toolBuilderSub">Tools appear here as Claude builds them.</div>
+      <div id="toolsContainer"></div>
+    </div>
+  </div>
+  <div class="bb">
+    <div class="bb-left" id="bbLeft">Building... <strong>0 / 6</strong> steps ready</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-back" onclick="goPage('build')">← Back</button>
+      <button class="btn-deploy" id="deployBtn" onclick="goPage('repo')">Deploy → Repository</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: REPO -->
+<div class="page" id="page-repo">
+  <div class="repo-layout">
+    <div class="repo-sidebar">
+      <div class="sb-sec">Status</div>
+      <div class="sb-item active" id="rsb-all" onclick="rSbFilter('all',this)"><span class="sb-name">All</span><span class="sb-n">4</span></div>
+      <div class="sb-item" id="rsb-live" onclick="rSbFilter('live',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;"></span><span class="sb-name">Live</span></div><span class="sb-n">3</span></div>
+      <div class="sb-item" id="rsb-draft" onclick="rSbFilter('draft',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--muted);display:inline-block;"></span><span class="sb-name">Draft</span></div><span class="sb-n">1</span></div>
+      <div class="sb-sec">Deployed By</div>
+      <div class="sb-item"><span class="sb-name">Admin</span><span class="sb-n">4</span></div>
+    </div>
+    <div class="repo-main">
+      <div class="repo-stats">
+        <div class="stat"><div class="stat-val">4</div><div class="stat-label">Workflows</div></div>
+        <div class="stat"><div class="stat-val">3</div><div class="stat-label">Live</div></div>
+        <div class="stat"><div class="stat-val">1</div><div class="stat-label">Draft</div></div>
+        <div class="stat"><div class="stat-val" id="repoRuns">24</div><div class="stat-label">Total runs</div></div>
+      </div>
+      <div class="repo-toolbar">
+        <input class="rsearch" placeholder="Search..." oninput="repoSearchFn(this.value)"/>
+        <button class="btn-new-wf" onclick="goPage('build')">+ New Workflow</button>
+      </div>
+      <div class="wf-grid" id="wfGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: LIBRARY -->
+<div class="page" id="page-library">
+  <div class="lib-layout">
+    <div class="lib-sidebar">
+      <div class="sb-sec">Tool Type</div>
+      <div class="sb-item active" id="lsb-all" onclick="lSbFilter('type','all',this)"><span class="sb-name">All Tools</span><span class="sb-n">9</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','fly',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--purple);display:inline-block;"></span><span class="sb-name">On the fly</span></div><span class="sb-n">6</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','ai',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--amber);display:inline-block;"></span><span class="sb-name">AI generated</span></div><span class="sb-n">1</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','gh',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--blue);display:inline-block;"></span><span class="sb-name">GitHub / MCP</span></div><span class="sb-n">2</span></div>
+      <div class="sb-sec">Used In</div>
+      <div class="sb-item" onclick="lSbFilter('wf','assign',this)"><span class="sb-name">Laptop Assignment</span><span class="sb-n">6</span></div>
+      <div class="sb-item" onclick="lSbFilter('wf','repair',this)"><span class="sb-name">Repair Request</span><span class="sb-n">5</span></div>
+      <div class="sb-item" onclick="lSbFilter('wf','return',this)"><span class="sb-name">Laptop Return</span><span class="sb-n">4</span></div>
+      <div class="sb-sec">Operation</div>
+      <div class="sb-item" onclick="lSbFilter('op','read',this)"><span class="sb-name">Read</span><span class="sb-n">4</span></div>
+      <div class="sb-item" onclick="lSbFilter('op','write',this)"><span class="sb-name">Write</span><span class="sb-n">3</span></div>
+      <div class="sb-item" onclick="lSbFilter('op','action',this)"><span class="sb-name">Action</span><span class="sb-n">2</span></div>
+    </div>
+    <div class="lib-main">
+      <div class="lib-stats">
+        <div class="stat"><div class="stat-val">9</div><div class="stat-label">Total tools</div></div>
+        <div class="stat"><div class="stat-val">6</div><div class="stat-label">Built on the fly</div></div>
+        <div class="stat"><div class="stat-val">3</div><div class="stat-label">Workflows</div></div>
+        <div class="stat"><div class="stat-val">24</div><div class="stat-label">Total runs</div></div>
+      </div>
+      <div class="lib-toolbar">
+        <input class="lsearch" placeholder="Search tools..." oninput="libSearchFn(this.value)"/>
+        <button class="lfb lf-fly" onclick="lToggleFilter('type','fly',this)">On the fly</button>
+        <button class="lfb lf-ai" onclick="lToggleFilter('type','ai',this)">AI</button>
+        <button class="lfb lf-gh" onclick="lToggleFilter('type','gh',this)">GitHub</button>
+        <button class="lfb" onclick="lToggleFilter('op','read',this)">Read</button>
+        <button class="lfb" onclick="lToggleFilter('op','write',this)">Write</button>
+        <button class="lfb" onclick="lToggleFilter('op','action',this)">Action</button>
+        <span class="lcnt" id="lcnt">9 tools</span>
+      </div>
+      <div class="lib-grid" id="libGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 6: FULFILLER -->
+<div class="page" id="page-fulfiller">
+  <div style="display:flex;flex:1;overflow:hidden;">
+    <!-- QUEUE -->
+    <div style="width:220px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;">
+      <div style="padding:0.85rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="font-size:13px;font-weight:500;">Request Queue</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="queueSub">4 requests · 2 pending</div>
+      </div>
+      <div style="display:flex;gap:5px;padding:0.6rem 0.75rem;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <button class="lfb active" id="qf-all" onclick="qFilter('all',this)" style="padding:3px 9px;">All</button>
+        <button class="lfb" id="qf-pending" onclick="qFilter('pending',this)" style="padding:3px 9px;">Pending</button>
+        <button class="lfb" id="qf-done" onclick="qFilter('done',this)" style="padding:3px 9px;">Done</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0.6rem;" id="queueList"></div>
+    </div>
+
+    <!-- CHAT -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);">
+      <div style="padding:0.75rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:13px;font-weight:500;" id="fChatTitle">Workflow Assistant</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px;" id="fChatSub">Select a request from the queue</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--green);"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;"></span>Online</div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:10px;" id="fMsgs">
+        <div style="max-width:85%;"><div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;line-height:1.65;">
+          Welcome back 👋<br><br>You have <strong>2 pending requests</strong> in your queue.<br><br>
+          • 💻 <strong>Priya Sharma</strong> — New joiner, laptop assignment<br>
+          • 🔧 <strong>Ananya Iyer</strong> — Repair request, screen damage<br><br>
+          Select a request on the left to run its workflow.
+        </div></div>
+      </div>
+      <div style="padding:0.75rem 1rem;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+        <input style="flex:1;background:var(--surf);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none;" id="fChatInp" placeholder="Type a message..." onkeydown="if(event.key==='Enter')fSendChat()"/>
+        <button style="width:32px;height:32px;border-radius:50%;background:var(--amber);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="fSendChat()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- EXECUTION -->
+    <div style="width:255px;flex-shrink:0;overflow-y:auto;padding:1rem;background:var(--surf2);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <span style="font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">Execution</span>
+        <span class="esb esb-idle" id="fExecBadge">IDLE</span>
+      </div>
+      <div id="fExecContent">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;opacity:0.3;gap:8px;">
+          <div style="font-size:22px;">⟳</div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;">Select a request and run its workflow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 5: EMPLOYEE -->
+<div class="page" id="page-employee">
+  <div class="emp-layout">
+    <div class="emp-sidebar">
+      <div class="ep">
+        <div class="ep-av">PS</div>
+        <div class="ep-name">Priya Sharma</div>
+        <div class="ep-role">Software Engineer</div>
+        <div class="ep-loc">📍 Hyderabad</div>
+      </div>
+      <div class="sb-sec" style="padding:0.65rem 1rem 0.4rem;">My Requests</div>
+      <div class="emp-req-list" id="empReqList">
+        <div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>
+      </div>
+    </div>
+    <div class="emp-chat">
+      <div class="ech-hdr">
+        <div><div class="ech-title">Weaver Assistant</div><div class="ech-sub">Raise a request · Track status · Get notified</div></div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--green);"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;"></span>Online</div>
+      </div>
+      <div class="emp-msgs" id="empMsgs">
+        <div class="ema"><div class="ewbadge"><span class="ewdot"></span>Weaver</div>
+        <div class="eba">Hi Priya 👋 What can I help you with?<br><br>• 🔧 Raise a repair request<br>• ↩ Return your laptop<br>• 🔄 Request a laptop refresh<br>• 📋 Check request status</div></div>
+      </div>
+      <div class="eqr" id="empQR">
+        <button class="eqb" onclick="empQuick('repair')">🔧 Repair</button>
+        <button class="eqb" onclick="empQuick('return')">↩ Return</button>
+        <button class="eqb" onclick="empQuick('refresh')">🔄 Refresh</button>
+        <button class="eqb" onclick="empQuick('status')">📋 Status</button>
+      </div>
+      <div class="einp-row">
+        <input class="einp" id="empInp" placeholder="Type your request..." onkeydown="if(event.key==='Enter')empSend()"/>
+        <button class="esend" onclick="empSend()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="mh-left"><div class="m-ico" id="mIco"></div><div><div class="m-title" id="mTitle"></div><div class="m-sub" id="mSub"></div></div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="m-info" id="mInfo"></div>
+      <div class="m-console">
+        <div class="mc-hdr"><span class="mc-title">Run Console</span><span class="esb esb-idle" id="mExecBadge">IDLE</span></div>
+        <div class="mc-body">
+          <div class="mc-form" id="mForm"></div>
+          <div class="mc-exec" id="mExec"><div class="idle-hint"><div style="font-size:16px;opacity:0.5;">▶</div><div style="font-size:10px;color:var(--muted);">Fill in details and execute.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TOKEN SETUP ──
+(function(){
+  let token = localStorage.getItem('weaver_gh_token');
+  if(!token){
+    token = prompt('Enter your GitHub Personal Access Token to enable live sync:');
+    if(token && token.trim()) localStorage.setItem('weaver_gh_token', token.trim());
+  }
+})();
+
+// ── GITHUB CONFIG ──
+const GH = {
+  token: localStorage.getItem('weaver_gh_token') || '',
+  repo: 'kllmmeghana/weaver-assets',
+  base: 'https://api.github.com',
+  async createIssue(title, body, labels){
+    const res = await fetch(`${this.base}/repos/${this.repo}/issues`, {
+      method:'POST',
+      headers:{'Authorization':`token ${this.token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({title, body, labels: labels||[]})
+    });
+    const d = await res.json();
+    return d;
+  },
+  async getIssues(labels){
+    const q = labels ? `?labels=${labels}&state=all&per_page=20` : '?state=all&per_page=20';
+    const res = await fetch(`${this.base}/repos/${this.repo}/issues${q}`, {
+      headers:{'Authorization':`token ${this.token}`}
+    });
+    return await res.json();
+  },
+  async closeIssue(number){
+    const res = await fetch(`${this.base}/repos/${this.repo}/issues/${number}`, {
+      method:'PATCH',
+      headers:{'Authorization':`token ${this.token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({state:'closed'})
+    });
+    return await res.json();
+  }
+};
+
+// Polling state
+let ghPoller = null;
+let processedIssues = new Set();
+
+function startGHPolling(){
+  if(ghPoller) clearInterval(ghPoller);
+  ghPoller = setInterval(pollGitHub, 3000);
+  pollGitHub(); // immediate first poll
+}
+
+function stopGHPolling(){
+  if(ghPoller){ clearInterval(ghPoller); ghPoller=null; }
+}
+
+async function pollGitHub(){
+  if(currentRole !== 'employee') return;
+  try {
+    const issues = await GH.getIssues('weaver-event');
+    for(const issue of issues){
+      if(processedIssues.has(issue.number)) continue;
+      const labelNames = issue.labels.map(l=>l.name);
+      if(labelNames.includes('weaver-event')){
+        processedIssues.add(issue.number);
+        const body = issue.body || '';
+        // Parse event type from issue title
+        if(issue.title.includes('LAPTOP_ASSIGNED')){
+          const data = parseIssueBody(body);
+          WeaverEvents.emit('laptop_assigned', data);
+        } else if(issue.title.includes('REPAIR_APPROVED')){
+          const data = parseIssueBody(body);
+          WeaverEvents.emit('repair_approved', data);
+        } else if(issue.title.includes('RETURN_PROCESSED')){
+          const data = parseIssueBody(body);
+          WeaverEvents.emit('return_processed', data);
+        } else if(issue.title.includes('REFRESH_PROCESSED')){
+          const data = parseIssueBody(body);
+          WeaverEvents.emit('refresh_processed', data);
+        }
+      }
+    }
+  } catch(e){ /* silent fail */ }
+}
+
+function parseIssueBody(body){
+  const data = {};
+  body.split('\n').forEach(line => {
+    const [k,...v] = line.split(':');
+    if(k && v.length) data[k.trim().toLowerCase()] = v.join(':').trim();
+  });
+  return data;
+}
+
+// ── EVENT BUS ── connects Fulfiller ↔ Employee
+const WeaverEvents = {
+  queue: [],
+  listeners: [],
+  emit(type, data){
+    this.queue.push({type, data, ts: Date.now()});
+    this.listeners.forEach(fn => fn(type, data));
+  },
+  on(fn){ this.listeners.push(fn); },
+  off(fn){ this.listeners = this.listeners.filter(x => x !== fn); }
+};
+
+const PROMPTS={
+  assign:"When a new employee joins, run a full laptop asset assignment. Validate the employee and their role-based entitlement tier, check asset inventory for an available unit matching the spec and location, assign the laptop and update its status to In Use, update the CMDB with asset tag and hostname, suggest software based on their role using AI, and generate an assignment confirmation report.",
+  return:"When an employee is offboarding, run a full laptop return workflow. Validate the employee's exit date and current asset assignment, check if the asset is overdue for return, update the asset status to In Stock and clear the assigned employee, flag the device for wiping and inspection, and generate a return confirmation report.",
+  repair:"When an employee reports a laptop issue, run a repair request workflow. Validate the employee and their current asset, assess repair urgency based on issue type, check for an available loaner unit in the same location, assign the loaner and flag the original asset as Under Repair, and generate a repair ticket with DT team escalation.",
+  refresh:"When an employee requests a laptop refresh, check device age against the refresh policy, validate eligibility, initiate replacement process, and generate a refresh confirmation."
+};
+const BUILDER_STEPS=[
+  {name:'Validate employee & entitlement',desc:'Confirm employee exists and map role to laptop tier.',tools:[{n:'employees.check',t:'fly'},{n:'entitlement.get_tier',t:'fly'}]},
+  {name:'Check asset inventory',desc:'Query inventory for available units matching tier and location.',tools:[{n:'assets.inventory_check',t:'fly'}]},
+  {name:'Assign asset & update status',desc:'Set asset status to In Use and link to employee.',tools:[{n:'assets.assign',t:'fly'}]},
+  {name:'Update CMDB & generate hostname',desc:'Link CI record, generate hostname, write to GitHub.',tools:[{n:'cmdb.update',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+  {name:'AI software suggestion',desc:'Call Claude API with role description to generate software bundle.',tools:[{n:'ai.suggest_software',t:'ai'}]},
+  {name:'Generate assignment confirmation',desc:'Create GitHub issue as audit trail and queue Teams notification.',tools:[{n:'github.create_issue',t:'gh'}]}
+];
+const ALL_BUILDER_STEPS={
+  assign:[
+    {name:'Validate employee & entitlement',desc:'Confirm employee exists and map role to laptop tier.',tools:[{n:'employees.check',t:'fly'},{n:'entitlement.get_tier',t:'fly'}]},
+    {name:'Check asset inventory',desc:'Query inventory for available units matching tier and location.',tools:[{n:'assets.inventory_check',t:'fly'}]},
+    {name:'Assign asset & update status',desc:'Set asset status to In Use and link to employee.',tools:[{n:'assets.assign',t:'fly'}]},
+    {name:'Update CMDB & generate hostname',desc:'Link CI record, generate hostname, write to GitHub.',tools:[{n:'cmdb.update',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+    {name:'AI software suggestion',desc:'Call Claude API with role description to generate software bundle.',tools:[{n:'ai.suggest_software',t:'ai'}]},
+    {name:'Generate assignment confirmation',desc:'Create GitHub issue as audit trail and queue Teams notification.',tools:[{n:'github.create_issue',t:'gh'}]}
+  ],
+  return:[
+    {name:'Validate employee & asset',desc:'Confirm employee exit date and current asset assignment.',tools:[{n:'employees.check',t:'fly'},{n:'assets.verify',t:'fly'}]},
+    {name:'Check return eligibility',desc:'Verify exit date and confirm return is due.',tools:[{n:'employees.check',t:'fly'}]},
+    {name:'Clear assignment & update status',desc:'Set asset status to In Stock and remove employee link.',tools:[{n:'assets.assign',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+    {name:'Flag for wiping & inspection',desc:'Mark device for DT team wipe and hardware inspection.',tools:[{n:'github.update_asset',t:'gh'}]},
+    {name:'Generate return confirmation',desc:'Create GitHub issue and send return checklist to employee.',tools:[{n:'github.create_issue',t:'gh'}]}
+  ],
+  repair:[
+    {name:'Validate employee & asset',desc:'Confirm employee identity and verify asset tag ownership.',tools:[{n:'employees.check',t:'fly'},{n:'assets.verify',t:'fly'}]},
+    {name:'Assess repair urgency',desc:'Score issue description to determine HIGH or STANDARD urgency.',tools:[{n:'repair.assess_urgency',t:'fly'}]},
+    {name:'Check loaner availability',desc:'Find available loaner unit in the same location.',tools:[{n:'assets.inventory_check',t:'fly'}]},
+    {name:'Assign loaner & flag repair',desc:'Assign loaner to employee, flag original as Under Repair.',tools:[{n:'assets.assign',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+    {name:'Generate repair confirmation',desc:'Create GitHub issue and notify employee via Teams.',tools:[{n:'github.create_issue',t:'gh'}]}
+  ],
+  refresh:[
+    {name:'Validate employee & device age',desc:'Confirm employee exists and check current device age against policy.',tools:[{n:'employees.check',t:'fly'},{n:'assets.verify',t:'fly'}]},
+    {name:'Check refresh eligibility',desc:'Apply refresh policy — device must be 3+ years old.',tools:[{n:'entitlement.get_tier',t:'fly'}]},
+    {name:'Check replacement inventory',desc:'Find available replacement unit matching employee tier and location.',tools:[{n:'assets.inventory_check',t:'fly'}]},
+    {name:'Initiate replacement order',desc:'Assign new device, flag old device for return and wipe.',tools:[{n:'assets.assign',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+    {name:'Generate refresh confirmation',desc:'Create GitHub issue and send refresh checklist to employee.',tools:[{n:'github.create_issue',t:'gh'}]}
+  ]
+};
+const BUILDER_LABELS={assign:'Laptop Assignment · 6 steps',return:'Laptop Return · 5 steps',repair:'Repair Request · 5 steps',refresh:'Laptop Refresh · 5 steps'};
+let currentWF='assign';
+const TOOL_DESCS={
+  'employees.check':'Lookup employee by ID or name. Returns role, dept, location, status.',
+  'entitlement.get_tier':'Maps employee role to laptop tier (premium / standard).',
+  'assets.inventory_check':'Filters inventory by tier, location and availability.',
+  'assets.assign':'Updates asset status and employee link. Writes back to GitHub.',
+  'cmdb.update':'Links CI record to employee, generates hostname.',
+  'repair.assess_urgency':'Scores issue description for urgency level.',
+  'assets.verify':'Verifies asset tag and confirms assignment.',
+  'ai.suggest_software':'Calls Claude API. Returns personalised software bundle.',
+  'github.update_asset':'Commits updated assets.json via GitHub Contents API.',
+  'github.create_issue':'Creates GitHub issue as audit trail.'
+};
+const WFS=[
+  {id:'assign',name:'Laptop Assignment',type:'assign',status:'live',desc:'Validates entitlement, checks inventory, assigns asset, updates CMDB, AI software suggestion, confirmation.',steps:6,tools:['fly','fly','fly','fly','ai','gh'],runs:10,isNew:true,
+    stepsArr:[{name:'Validate employee & entitlement',tool:'employees.check · entitlement.get_tier'},{name:'Check asset inventory',tool:'assets.inventory_check'},{name:'Assign asset & update status',tool:'assets.assign'},{name:'Update CMDB & hostname',tool:'github.update_asset'},{name:'AI software suggestion',tool:'ai.suggest_software'},{name:'Generate confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Priya Sharma'},{id:'empId',label:'Employee ID',ph:'e.g. EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager']},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai']}]},
+  {id:'repair',name:'Repair Request',type:'repair',status:'live',desc:'Validates employee & asset, assesses urgency, assigns loaner, flags for repair, generates confirmation.',steps:5,tools:['fly','fly','fly','fly','gh'],runs:8,isNew:true,
+    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Assess repair urgency',tool:'repair.assess_urgency'},{name:'Check loaner availability',tool:'assets.inventory_check'},{name:'Assign loaner & flag repair',tool:'assets.assign · github.update_asset'},{name:'Generate confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Ananya Iyer'},{id:'empId',label:'Employee ID',ph:'e.g. EMP003'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00441'},{id:'issueDesc',label:'Issue',ph:'e.g. Screen damage'}]},
+  {id:'return',name:'Laptop Return',type:'return',status:'live',desc:'Validates employee exit date and asset, clears assignment, updates inventory, flags device for wiping.',steps:5,tools:['fly','fly','fly','gh','gh'],runs:6,isNew:false,
+    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Check return eligibility',tool:'employees.check'},{name:'Clear assignment & update status',tool:'assets.assign · github.update_asset'},{name:'Flag for wiping & inspection',tool:'github.update_asset'},{name:'Generate return confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Raj Mehta'},{id:'empId',label:'Employee ID',ph:'e.g. EMP002'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00391'}]},
+  {id:'refresh',name:'Laptop Refresh',type:'assign',status:'draft',desc:'Draft — checks device age against refresh policy, validates eligibility, initiates replacement.',steps:4,tools:['fly','fly','gh'],runs:0,isNew:false,
+    stepsArr:[{name:'Validate employee & device age',tool:'employees.check · assets.verify'},{name:'Check refresh eligibility',tool:'entitlement.get_tier'},{name:'Initiate replacement order',tool:'assets.assign'},{name:'Generate refresh confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]}
+];
+const TOOLS=[
+  {name:'employees.check',type:'fly',op:'read',wfs:['Laptop Assignment','Laptop Return','Repair Request'],runs:12,isNew:true},
+  {name:'entitlement.get_tier',type:'fly',op:'read',wfs:['Laptop Assignment'],runs:5,isNew:true},
+  {name:'assets.inventory_check',type:'fly',op:'read',wfs:['Laptop Assignment','Repair Request'],runs:8,isNew:true},
+  {name:'assets.verify',type:'fly',op:'read',wfs:['Repair Request','Laptop Return'],runs:6,isNew:true},
+  {name:'assets.assign',type:'fly',op:'write',wfs:['Laptop Assignment','Repair Request'],runs:5,isNew:true},
+  {name:'repair.assess_urgency',type:'fly',op:'read',wfs:['Repair Request'],runs:4,isNew:true},
+  {name:'ai.suggest_software',type:'ai',op:'action',wfs:['Laptop Assignment'],runs:5,isNew:true},
+  {name:'github.update_asset',type:'gh',op:'write',wfs:['Laptop Assignment','Repair Request','Laptop Return'],runs:9,isNew:false},
+  {name:'github.create_issue',type:'gh',op:'action',wfs:['Laptop Assignment','Repair Request','Laptop Return'],runs:9,isNew:false}
+];
+const TICONS={
+  fly:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  ai:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`,
+  gh:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>`
+};
+const WFICONS={
+  assign:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+  return:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>`,
+  repair:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+  draft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+};
+const TC={fly:'var(--purple)',ai:'var(--amber)',gh:'var(--blue)'};
+let currentRole='admin',repoFilter='all',repoSrch='',libFilters={type:null,op:null,wf:null},libSrch='',issueN=9,empReqs=[],empRN=0,repairPhase='',builderDone=false;
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── NAV ──
+function goPage(p){
+  if(currentRole==='employee' && p!=='employee') stopGHPolling();
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  updateNavTabs(p);
+  if(p==='builder'&&!builderDone)startBuilder();
+  if(p==='repo')renderRepo();
+  if(p==='library')renderLibrary();
+}
+function updateNavTabs(active){
+  const t=document.getElementById('navTabs');
+  if(currentRole==='admin'){
+    const ps=['build','builder','repo','library'],ls=['Build','Workflow Builder','Workflow Repository','Library'];
+    t.innerHTML=ps.map((p,i)=>{
+      const isActive = p===active;
+      // Only disable builder tab if building is in progress
+      const isDisabled = p==='builder' && !builderDone && active==='builder';
+      return `<div class="ntab ${isActive?'active':''}" style="${isDisabled?'opacity:0.4;pointer-events:none;':''}" onclick="goPage('${p}')">${ls[i]}</div>`;
+    }).join('');
+  }else if(currentRole==='fulfiller'){
+    t.innerHTML=`<div class="ntab" style="color:var(--amber);border-bottom:2px solid var(--amber);">Fulfiller</div>`;
+  }else{
+    t.innerHTML=`<div class="ntab active-blue">Chat</div>`;
+  }
+}
+function toggleDD(){document.getElementById('roleDD').classList.toggle('hidden');}
+function switchRole(r){
+  currentRole=r;document.getElementById('roleDD').classList.add('hidden');
+  const dots={admin:'rd-a',fulfiller:'rd-f',employee:'rd-e'};
+  const labels={admin:'Admin',fulfiller:'Fulfiller',employee:'Employee'};
+  document.getElementById('roleBtn').innerHTML=`<span class="rdot ${dots[r]}"></span>${labels[r]}<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>`;
+  if(r==='admin')goPage('build');
+  else if(r==='fulfiller'){goPage('fulfiller');renderQueue();}
+  else{goPage('employee');initEmployeePage();}
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.role-wrap'))document.getElementById('roleDD').classList.add('hidden');});
+
+// ── BUILD ──
+function setWF(el,k){document.querySelectorAll('.wftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('promptTa').value=PROMPTS[k];currentWF=k;builderDone=false;}
+function hitWeave(){
+  if(!document.getElementById('promptTa').value.trim()){alert('Please describe your workflow first');return;}
+  builderDone=false;
+  goPage('builder');
+}
+
+// ── BUILDER ──
+async function startBuilder(){
+  builderDone=false;
+  const steps=ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
+  const total=steps.length;
+  document.getElementById('stepsContainer').innerHTML='';
+  document.getElementById('toolsContainer').innerHTML='';
+  document.getElementById('thinking').style.display='flex';
+  document.getElementById('deployBtn').classList.remove('ready');
+  document.getElementById('bbLeft').innerHTML=`Building... <strong>0 / ${total}</strong> steps ready`;
+  const badge=document.getElementById('blBadge');if(badge)badge.textContent=BUILDER_LABELS[currentWF]||'Workflow';
+  await sleep(400);
+  document.getElementById('thinking').style.display='none';
+  document.getElementById('blSub').textContent='Building steps one by one...';
+  for(let i=0;i<steps.length;i++){
+    await buildStep(steps[i],i+1);
+    document.getElementById('bbLeft').innerHTML=`Building... <strong>${i+1} / ${total}</strong> steps ready`;
+  }
+  const toolCount=steps.reduce((a,s)=>a+s.tools.length,0);
+  document.getElementById('blSub').textContent=`${total} steps · ${toolCount} tools · ready to deploy`;
+  document.getElementById('bbLeft').innerHTML=`<span style="color:var(--green)">✓ Ready</span> · ${total} steps · ${toolCount} tools saved to Library`;
+  document.getElementById('deployBtn').classList.add('ready');
+  builderDone=true;
+}
+async function buildStep(step,n){
+  const sc=document.getElementById('stepsContainer');
+  const card=document.createElement('div');
+  card.className='step-card building';
+  card.innerHTML=`<div class="step-top"><div class="step-num" id="snum${n}">${n}</div><div><div class="step-name">${step.name}</div><div class="step-desc" style="color:var(--blue);"><span class="spin" style="border-top-color:var(--blue);"></span>Mapping...</div></div></div>`;
+  sc.appendChild(card);
+  for(let t of step.tools){await buildTool(t);await sleep(80);}
+  await sleep(80);
+  const pills=step.tools.map(t=>`<span class="tool-pill ${t.t==='fly'?'tp-fly':t.t==='ai'?'tp-ai':'tp-gh'}">${t.n}</span>`).join('');
+  card.className='step-card';
+  card.innerHTML=`<div class="step-top"><div class="step-num done"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="step-name">${step.name}</div><div class="step-desc">${step.desc}</div><div class="step-tools">${pills}</div></div></div>`;
+}
+async function buildTool(t){
+  const tc=document.getElementById('toolsContainer');
+  const el=document.createElement('div');
+  el.className='tool-card building';
+  const icoBg=t.t==='fly'?'tci-fly':t.t==='ai'?'tci-ai':'tci-gh';
+  const bdgCls=t.t==='fly'?'tcb-fly':t.t==='ai'?'tcb-ai':'tcb-gh';
+  const bdgLbl=t.t==='fly'?'On the fly':t.t==='ai'?'Claude API':'GitHub';
+  el.innerHTML=`<div class="tc-hdr"><div class="tc-ico ${icoBg}">${TICONS[t.t]}</div><div class="tc-name">${t.n}</div><span class="tc-badge ${bdgCls}"><span class="spin"></span></span></div><div style="font-size:10px;color:var(--blue);">Generating...</div>`;
+  tc.appendChild(el);tc.scrollTop=tc.scrollHeight;
+  await sleep(400);
+  el.className='tool-card saved';
+  el.innerHTML=`<div class="tc-hdr"><div class="tc-ico ${icoBg}">${TICONS[t.t]}</div><div class="tc-name">${t.n}</div><span class="tc-badge ${bdgCls}">${bdgLbl}</span></div><div class="tc-desc">${TOOL_DESCS[t.n]||''}</div><div class="tc-footer"><span class="tc-saved">✓ Saved to Library</span><span style="font-size:9px;color:var(--muted);">→ Library</span></div>`;
+  tc.scrollTop=tc.scrollHeight;
+}
+
+// ── REPO ──
+function renderRepo(){
+  const f=WFS.filter(w=>{
+    if(repoFilter==='live'&&w.status!=='live')return false;
+    if(repoFilter==='draft'&&w.status!=='draft')return false;
+    if(repoSrch&&!w.name.toLowerCase().includes(repoSrch))return false;
+    return true;
+  });
+  document.getElementById('wfGrid').innerHTML=f.map(w=>{
+    const ib=w.status==='draft'?'wfci-d':w.type==='assign'?'wfci-a':w.type==='return'?'wfci-r':'wfci-x';
+    const ic=w.status==='draft'?WFICONS.draft:WFICONS[w.type];
+    return `<div class="wfc ${w.status==='draft'?'draft':''}" onclick="openModal('${w.id}')">
+      <div class="wfc-top"><div class="wfc-ico ${ib}">${ic}</div>${w.isNew?`<span class="new-badge">NEW</span>`:w.status==='draft'?`<span class="draft-badge">DRAFT</span>`:`<div class="wfc-live"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;"></span>Live</div>`}</div>
+      <div class="wfc-name">${w.name}</div>
+      <div class="wfc-desc">${w.desc}</div>
+      <div class="wfc-pips">${Array(w.steps).fill(`<div class="pip ${w.status==='draft'?'pip-draft':'pip-live'}"></div>`).join('')}<span style="font-size:9px;color:var(--muted);margin-left:4px;">${w.steps} steps</span></div>
+      <div style="display:flex;gap:3px;margin-bottom:8px;">${w.tools.map(t=>`<div style="width:7px;height:7px;border-radius:50%;background:${TC[t]};opacity:0.7;"></div>`).join('')}<span style="font-size:9px;color:var(--muted);margin-left:3px;">${w.tools.length} tools</span></div>
+      <div class="wfc-footer"><span class="wfc-runs">${w.runs} runs</span><div style="display:flex;gap:5px;"><button class="btn-edit-sm" onclick="event.stopPropagation()">Edit</button><button class="btn-run-sm ${w.status==='draft'?'dis':''}" onclick="event.stopPropagation();openModal('${w.id}')">▶ Run</button></div></div>
+    </div>`;
+  }).join('');
+}
+function rSbFilter(v,el){repoFilter=v;document.querySelectorAll('.repo-sidebar .sb-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');renderRepo();}
+function repoSearchFn(v){repoSrch=v.toLowerCase();renderRepo();}
+
+// ── MODAL ──
+function openModal(id){
+  const w=WFS.find(x=>x.id===id);
+  const ib=w.status==='draft'?'wfci-d':w.type==='assign'?'wfci-a':w.type==='return'?'wfci-r':'wfci-x';
+  document.getElementById('mIco').className=`m-ico ${ib}`;
+  document.getElementById('mIco').innerHTML=w.status==='draft'?WFICONS.draft:WFICONS[w.type];
+  document.getElementById('mTitle').textContent=w.name;
+  document.getElementById('mSub').textContent=w.status==='live'?`Live · ${w.steps} steps · ${w.runs} runs`:`Draft · ${w.steps} steps`;
+  document.getElementById('mInfo').innerHTML=`
+    <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:10px;">${w.desc}</div>
+    <div class="mi-stats"><div class="mi-stat"><div class="mi-stat-val">${w.steps}</div><div class="mi-stat-label">Steps</div></div><div class="mi-stat"><div class="mi-stat-val">${w.tools.length}</div><div class="mi-stat-label">Tools</div></div><div class="mi-stat"><div class="mi-stat-val">${w.runs}</div><div class="mi-stat-label">Runs</div></div></div>
+    <div class="mi-sec">Steps & Tools</div>
+    ${w.stepsArr.map((s,i)=>`<div class="mi-step"><div class="mi-sn">${i+1}</div><div><div class="mi-sname">${s.name}</div><div class="mi-stool">${s.tool}</div></div></div>`).join('')}`;
+  document.getElementById('mExecBadge').className='esb esb-idle';
+  document.getElementById('mExecBadge').textContent='IDLE';
+  document.getElementById('mExec').innerHTML=`<div class="idle-hint"><div style="font-size:16px;opacity:0.5;">▶</div><div style="font-size:10px;color:var(--muted);">Fill in details and execute.</div></div>`;
+  document.getElementById('mForm').innerHTML=w.status==='draft'
+    ?`<div style="font-size:11px;color:var(--muted);line-height:1.5;padding:8px;background:var(--surf2);border-radius:6px;">This workflow is in <strong>Draft</strong>.<br>Complete building it first.<br><br><button style="margin-top:6px;padding:5px 10px;background:var(--surf2);border:1px solid var(--border2);color:var(--mid);border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit;" onclick="closeModal();goPage('builder')">Open in Builder →</button></div>`
+    :`<div style="font-size:11px;color:var(--mid);margin-bottom:9px;">Run <strong>${w.name}</strong></div>
+    ${w.fields.map(f=>f.type==='select'?`<div class="ff"><div class="fl">${f.label}</div><select class="fs" id="mf-${f.id}"><option value="">Select...</option>${f.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`:`<div class="ff"><div class="fl">${f.label}</div><input class="fi" id="mf-${f.id}" placeholder="${f.ph}"/></div>`).join('')}
+    <button class="btn-exec" onclick="executeModal('${w.id}')">▶ Execute</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function mAddStep(n,name,st,badge,detail){
+  const icons={p:`<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3dffa0" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,w:`<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffaa3d" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`,r:`<span class="spin"></span>`};
+  const sc={p:'esi-p',w:'esi-w',r:'esi-r'};
+  const bc={p:'esrb-p',w:'esrb-w'};
+  const html=`<div class="exec-step" id="mes${n}"><div class="esi ${sc[st]||'esi-r'}">${icons[st]||''}</div><div><div class="esn">${n}. ${name}</div>${badge?`<span class="esrb ${bc[st]||''}">${badge}</span>`:''} ${detail?`<div class="esd">${detail}</div>`:''}</div></div>`;
+  const ex=document.getElementById('mes'+n);
+  if(ex)ex.outerHTML=html;else document.getElementById('mExec').innerHTML+=html;
+  document.getElementById('mExec').scrollTop=9999;
+}
+async function executeModal(id){
+  const w=WFS.find(x=>x.id===id);
+  const vals={};w.fields.forEach(f=>{const el=document.getElementById('mf-'+f.id);if(el)vals[f.id]=el.value.trim();});
+  const name=vals.empName||'Employee';
+  document.getElementById('mExec').innerHTML='';
+  document.getElementById('mExecBadge').className='esb esb-run';
+  document.getElementById('mExecBadge').textContent='RUNNING';
+  if(id==='repair'){
+    const iss=vals.issueDesc||'Screen damage';const high=/(screen|battery|broken|crack)/i.test(iss);
+    mAddStep(1,'Validate employee & asset','r','');await sleep(700);mAddStep(1,'Validate employee & asset','p','VALIDATED',`${name} confirmed`);await sleep(400);
+    mAddStep(2,'Assess repair urgency','r','');await sleep(650);mAddStep(2,'Assess repair urgency',high?'w':'p',high?'HIGH URGENCY':'STANDARD',iss);await sleep(400);
+    mAddStep(3,'Check loaner availability','r','');await sleep(700);mAddStep(3,'Check loaner availability','p','LOANER FOUND','TAG-00600 assigned');await sleep(400);
+    mAddStep(4,'Assign loaner & flag repair','r','');await sleep(700);mAddStep(4,'Assign loaner & flag repair','w','UNDER REPAIR',`${vals.assetTag||'TAG-00441'} flagged`);await sleep(400);
+    mAddStep(5,'Generate confirmation','r','');await sleep(750);mAddStep(5,'Generate confirmation','p','COMPLETE','Ticket ready');
+  }else if(id==='assign'){
+    const role=vals.empRole||'Software Engineer';const loc=vals.empLoc||'Hyderabad';
+    const tier=['Software Engineer','Product Manager','Designer'].includes(role)?'premium':'standard';
+    const noStock=tier==='premium'&&loc==='Bangalore';
+    mAddStep(1,'Validate employee & entitlement','r','');await sleep(700);mAddStep(1,'Validate employee & entitlement','p','VALIDATED',`${name} · ${tier.toUpperCase()}`);await sleep(400);
+    mAddStep(2,'Check asset inventory','r','');await sleep(700);
+    if(noStock){mAddStep(2,'Check asset inventory','w','NO STOCK',`No ${tier} laptops in ${loc}`);mSetDone();}
+    else{mAddStep(2,'Check asset inventory','p','FOUND',`TAG-00581 available`);await sleep(400);
+    mAddStep(3,'Assign asset & update status','r','');await sleep(650);mAddStep(3,'Assign asset & update status','p','ASSIGNED','Status → In Use');await sleep(400);
+    mAddStep(4,'Update CMDB & hostname','r','');await sleep(650);mAddStep(4,'Update CMDB & hostname','p','CMDB UPDATED','Hostname generated');await sleep(400);
+    mAddStep(5,'AI software suggestion','r','');await sleep(400);mAddStep(5,'AI software suggestion','p','BUNDLE READY','Engineering Bundle via Claude');await sleep(400);
+    mAddStep(6,'Generate confirmation','r','');await sleep(700);mAddStep(6,'Generate confirmation','p','COMPLETE','Email queued');mSetDone();}
+  }else{
+    mAddStep(1,'Validate employee & asset','r','');await sleep(700);mAddStep(1,'Validate employee & asset','p','VALIDATED',`${name} confirmed`);await sleep(400);
+    mAddStep(2,'Check return eligibility','r','');await sleep(650);mAddStep(2,'Check return eligibility','w','RETURN DUE','Exit confirmed');await sleep(400);
+    mAddStep(3,'Clear assignment & update status','r','');await sleep(700);mAddStep(3,'Clear assignment & update status','p','RETURNED','Status → In Stock');await sleep(400);
+    mAddStep(4,'Flag for wiping & inspection','r','');await sleep(650);mAddStep(4,'Flag for wiping & inspection','w','WIPE REQUIRED','DT notified');await sleep(400);
+    mAddStep(5,'Generate return confirmation','r','');await sleep(700);mAddStep(5,'Generate return confirmation','p','COMPLETE','Ticket ready');mSetDone();
+  }
+  issueN++;const w2=WFS.find(x=>x.id===id);if(w2)w2.runs++;
+  document.getElementById('repoRuns').textContent=parseInt(document.getElementById('repoRuns').textContent)+1;
+}
+function mSetDone(){
+  document.getElementById('mExecBadge').className='esb esb-done';
+  document.getElementById('mExecBadge').textContent='COMPLETE';
+  document.getElementById('mExec').innerHTML+=`<button class="btn-approve" onclick="mApprove()">✓ Approve Request</button>`;
+}
+function mApprove(){
+  const url=`https://github.com/kllmmeghana/weaver-assets/issues/${issueN}`;
+  document.getElementById('mExec').innerHTML+=`<div style="margin-top:6px;font-size:10px;color:var(--green);"><span style="color:var(--green)">✓ Approved & logged — ${ref}</span></div>`;
+  document.querySelector('.btn-approve')?.remove();
+  renderRepo();
+}
+
+// ── LIBRARY ──
+function renderLibrary(){
+  const f=TOOLS.filter(t=>{
+    if(libFilters.type&&t.type!==libFilters.type)return false;
+    if(libFilters.op&&t.op!==libFilters.op)return false;
+    if(libFilters.wf&&!t.wfs.some(w=>w.toLowerCase().includes(libFilters.wf)))return false;
+    if(libSrch&&!t.name.toLowerCase().includes(libSrch)&&!(TOOL_DESCS[t.name]||'').toLowerCase().includes(libSrch))return false;
+    return true;
+  });
+  document.getElementById('lcnt').textContent=f.length+' tool'+(f.length!==1?'s':'');
+  const ib={fly:'ltci-fly',ai:'ltci-ai',gh:'ltci-gh'};
+  const tp={fly:'ltp-fly',ai:'ltp-ai',gh:'ltp-gh'};
+  const tl={fly:'On the fly',ai:'Claude API',gh:'GitHub'};
+  document.getElementById('libGrid').innerHTML=f.length?f.map(t=>`<div class="ltc">${t.isNew?'<span class="lnew">NEW</span>':''}<div class="ltc-hdr"><div class="ltci ${ib[t.type]}">${TICONS[t.type]}</div><div class="ltc-name">${t.name}</div></div><div class="ltc-desc">${TOOL_DESCS[t.name]||''}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">${t.wfs.map(w=>`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);">${w.split(' ')[0]}</span>`).join('')}</div><div class="ltc-footer"><span class="ltp ${tp[t.type]}">${tl[t.type]}</span><span class="ltc-runs">${t.runs} runs</span></div></div>`).join(''):`<div style="grid-column:1/-1;text-align:center;padding:2rem;font-size:11px;color:var(--muted);opacity:0.4;">No tools match your filters.</div>`;
+}
+function lSbFilter(dim,val,el){document.querySelectorAll('.lib-sidebar .sb-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');libFilters={type:null,op:null,wf:null};document.querySelectorAll('.lfb').forEach(b=>b.classList.remove('active'));if(val!=='all')libFilters[dim]=val;renderLibrary();}
+function lToggleFilter(dim,val,el){if(libFilters[dim]===val){libFilters[dim]=null;el.classList.remove('active');}else{if(libFilters[dim])document.querySelector(`.lfb[onclick*="'${libFilters[dim]}'"]`)?.classList.remove('active');libFilters[dim]=val;el.classList.add('active');}renderLibrary();}
+function libSearchFn(v){libSrch=v.toLowerCase();renderLibrary();}
+
+// ── EMPLOYEE ──
+function initEmployeePage(){
+  WeaverEvents.on(handleFulfillerEvent);
+  startGHPolling();
+}
+
+async function handleFulfillerEvent(type, data){
+  if(currentRole !== 'employee') return;
+  await sleep(600);
+
+  if(type === 'laptop_assigned'){
+    empRN++;const id=empRN;const ref=`WVR-${String(id).padStart(4,'0')}`;
+    empReqs.push({id,label:'Laptop Assignment',status:'done'});
+    addEmpSidebar(id,'Laptop Assignment','erb-done','ASSIGNED');
+    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">💻 Your laptop is ready — ${data.asset}</div><div class="tc-body2">Hi ${data.name}, your laptop has been assigned.<br><br><strong style="color:#e8e8f4;">Model:</strong> ${data.model||'MacBook Pro 14 M3'}<br><strong style="color:#e8e8f4;">Tag:</strong> ${data.asset}<br><strong style="color:#e8e8f4;">Pickup:</strong> Hyderabad DT Desk · Floor 2</div><button class="tc-btn2" onclick="this.textContent='✓ On my way!'">Acknowledge</button></div>`);
+    await sleep(400);
+    eAddA(`Your laptop is assigned! Select the software you'd like installed:`);
+    await sleep(200);
+    showSoftware();
+    setEmpQR();
+  }
+
+  else if(type === 'repair_approved'){
+    const req = empReqs.find(r=>r.label==='Repair Request'&&r.status==='pending');
+    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
+    eAddNode(`<div class="teams-card"><div class="tc-hdr2"><div class="tc-ticon">T</div><div><div style="font-size:11px;font-weight:500;color:#e8e8f4;">IT Support · Weaver Bot</div><div class="tc-from">Via Microsoft Teams</div></div></div><div class="tc-title2">🔧 Repair approved — ${data.ref||'WVR-0002'}</div><div class="tc-body2">Hi ${data.name}, your repair has been processed.<br><br><strong style="color:#e8e8f4;">Loaner:</strong> ${data.loaner||'TAG-00600 (MacBook Air M2)'}<br><strong style="color:#e8e8f4;">Your device:</strong> ${data.asset||'TAG-00581'} → Under Repair<br><strong style="color:#e8e8f4;">ETA:</strong> 3–5 business days</div><button class="tc-btn2" onclick="this.textContent='✓ Got it'">Acknowledge</button></div>`);
+    setEmpQR();
+  }
+
+  else if(type === 'return_processed'){
+    const req = empReqs.find(r=>r.label==='Laptop Return'&&r.status==='auto');
+    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
+    eAddA(`✓ Your laptop return has been confirmed by the DT team.`);
+    setEmpQR();
+  }
+
+  else if(type === 'refresh_processed'){
+    const req = empReqs.find(r=>r.label==='Laptop Refresh'&&r.status==='auto');
+    if(req){ updateEmpBadge(req.id,'erb-done','DONE'); req.status='done'; }
+    eAddA(`✓ Refresh approved! Your new device is being prepared.`);
+    setEmpQR();
+  }
+}
+function eAddA(html){const m=document.getElementById('empMsgs');m.innerHTML+=`<div class="ema"><div class="ewbadge"><span class="ewdot"></span>Weaver</div><div class="eba">${html}</div></div>`;m.scrollTop=9999;}
+function eAddU(t){const m=document.getElementById('empMsgs');m.innerHTML+=`<div class="emu"><div class="ebu">${t}</div></div>`;m.scrollTop=9999;}
+function eAddNode(html){const m=document.getElementById('empMsgs');m.innerHTML+=`<div class="ema">${html}</div>`;m.scrollTop=9999;}
+function setEmpQR(btns){const def=[{text:'repair',label:'🔧 Repair'},{text:'return',label:'↩ Return'},{text:'refresh',label:'🔄 Refresh'},{text:'status',label:'📋 Status'}];document.getElementById('empQR').innerHTML=(btns||def).map(b=>`<button class="eqb" onclick="empQuick('${b.text}')">${b.label}</button>`).join('');}
+function addEmpSidebar(id,label,cls,text){const list=document.getElementById('empReqList');const empty=list.querySelector('[style]');if(empty)empty.remove();list.innerHTML=`<div class="eri active" id="eri-${id}"><div class="eri-top"><span class="eri-name">${label}</span><span class="eri-badge ${cls}" id="erib-${id}">${text}</span></div><div class="eri-time">Just now</div></div>`+list.innerHTML;}
+function updateEmpBadge(id,cls,text){const b=document.getElementById('erib-'+id);if(b){b.className=`eri-badge ${cls}`;b.textContent=text;}}
+function empQuick(intent){document.getElementById('empQR').innerHTML='';const labels={repair:'My laptop has an issue',return:'I want to return my laptop',refresh:'I need a laptop refresh',status:'Check my request status'};eAddU(labels[intent]||intent);handleEmpIntent(intent);}
+function empSend(){const inp=document.getElementById('empInp');const v=inp.value.trim();if(!v)return;inp.value='';document.getElementById('empQR').innerHTML='';eAddU(v);const l=v.toLowerCase();let intent='other';if(l.includes('repair')||l.includes('broken')||l.includes('screen')||l.includes('damage')||l.includes('battery')||l.includes('keyboard'))intent='repair';else if(l.includes('return'))intent='return';else if(l.includes('refresh'))intent='refresh';else if(l.includes('status')||l.includes('check'))intent='status';else if(repairPhase==='awaiting_issue')intent='repair_detail';handleEmpIntent(intent,v);}
+async function handleEmpIntent(intent,rawText){
+  await sleep(500);
+  if(intent==='repair'){repairPhase='awaiting_issue';eAddA(`Sorry to hear that! What's the issue?`);setEmpQR([{text:'screen_cracked',label:'🖥 Screen cracked'},{text:'battery_issue',label:'🔋 Battery issue'},{text:'keyboard_issue',label:'⌨️ Keyboard'},{text:'other_issue',label:'🔩 Other'}]);}
+  else if(['screen_cracked','battery_issue','keyboard_issue','other_issue'].includes(intent)){repairPhase='';const m={screen_cracked:'Screen is cracked',battery_issue:'Battery drains fast',keyboard_issue:'Keyboard not working',other_issue:'Other hardware issue'};eAddA(`Got it — <strong>${m[intent]}</strong>. Raising repair request...`);await sleep(700);await raiseEmpRepair(m[intent]);}
+  else if(intent==='repair_detail'){repairPhase='';eAddA(`Got it — <strong>${rawText}</strong>. Raising repair request...`);await sleep(700);await raiseEmpRepair(rawText);}
+  else if(intent==='return'){repairPhase='';eAddA(`Processing your <strong>Laptop Return</strong> now.`);await sleep(600);await raiseEmpAuto('return');}
+  else if(intent==='refresh'){repairPhase='';eAddA(`Checking your <strong>Laptop Refresh</strong> eligibility...`);await sleep(600);await raiseEmpAuto('refresh');}
+  else if(intent==='status'){repairPhase='';if(empReqs.length===0){eAddA(`No active requests right now.`);}else{const r=empReqs[empReqs.length-1];eAddA(`Latest: <strong>${r.label}</strong> — <span style="color:${r.status==='done'?'var(--green)':r.status==='auto'?'var(--purple)':'var(--amber)'};">${r.status==='done'?'✓ Done':r.status==='auto'?'⚡ Processing':'⏳ With the team'}</span>`);}setEmpQR();}
+  else{repairPhase='';eAddA(`I can help with repair, return, or refresh requests. What would you like to do?`);setEmpQR();}
+}
+async function raiseEmpRepair(issue){
+  empRN++;const id=empRN;const ref=`WVR-${String(id).padStart(4,'0')}`;
+  empReqs.push({id,label:'Repair Request',status:'pending'});
+  addEmpSidebar(id,'Repair Request','erb-new','SUBMITTED');
+  eAddNode(`<div class="sub-card"><div class="sc-title"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Request submitted</div><div class="sc-row"><span class="sc-label">Type</span><span class="sc-val">Repair Request</span></div><div class="sc-row"><span class="sc-label">Issue</span><span class="sc-val">${issue}</span></div><div class="sc-row"><span class="sc-label">Asset</span><span class="sc-val">TAG-00581</span></div><div class="sc-row"><span class="sc-label">Ref</span><span class="sc-val">${ref}</span></div><div class="sc-footer"><span class="sp sp-sub">Submitted</span></div></div>`);
+  await sleep(600);
+  eAddA(`Your repair request is with the DT team.<br>Ref: <strong style="font-family:monospace">${ref}</strong>`);
+  updateEmpBadge(id,'erb-prog','WITH TEAM');
+  setEmpQR();
+  // Notify fulfiller queue of new repair request
+  WeaverEvents.emit('new_repair_request',{name:'Priya Sharma',empId:'EMP001',asset:'TAG-00581',issue:issue,ref});
+  eAddA(`Your request is with the Fulfiller team. Switch to Fulfiller role to process it, then come back here for the Teams notification.`);
+}
+async function raiseEmpAuto(type){
+  empRN++;const id=empRN;const ref=`WVR-${String(id).padStart(4,'0')}`;
+  const label=type==='return'?'Laptop Return':'Laptop Refresh';
+  empReqs.push({id,label,status:'auto'});
+  addEmpSidebar(id,label,'erb-auto','AUTO');
+  eAddNode(`<div class="sub-card"><div class="sc-title"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Auto-processing</div><div class="sc-row"><span class="sc-label">Type</span><span class="sc-val">${label}</span></div><div class="sc-row"><span class="sc-label">Asset</span><span class="sc-val">TAG-00581</span></div><div class="sc-row"><span class="sc-label">Ref</span><span class="sc-val">${ref}</span></div><div class="sc-footer"><span class="sp sp-auto">⚡ Auto-running</span></div></div>`);
+  eAddA(`Request submitted — we'll take it from here. Checklist coming up shortly.`);
+  await sleep(3200);
+  updateEmpBadge(id,'erb-done','DONE');
+  empReqs.find(r=>r.id===id).status='done';
+  eAddA(`✓ Done! Here's what you need to do:`);
+  await sleep(300);
+  if(type==='return'){
+    eAddNode(`<div class="checklist"><div class="cl-title">↩ Laptop Return — ${ref}</div>${['Pack the laptop in its original box or sleeve','Drop it at the Hyderabad DT desk','Collect your return receipt from the DT team'].map((t,i)=>`<div class="cl-item" id="cl${id}-${i}" onclick="this.classList.toggle('chk')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">${t}</div></div>`).join('')}<div class="cl-ref">Ref: ${ref}</div></div>`);
+  }else{
+    eAddNode(`<div class="checklist"><div class="cl-title">🔄 Laptop Refresh — ${ref}</div>${['Back up your files to OneDrive before handover','Note any software you want on the new device','Drop old laptop at the Hyderabad DT desk','Collect your new device — ready for pickup'].map((t,i)=>`<div class="cl-item" id="cl${id}-${i}" onclick="this.classList.toggle('chk')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">${t}</div></div>`).join('')}<div class="cl-ref">Ref: ${ref}</div></div>`);
+    await sleep(400);eAddA(`What software would you like on your new device?`);await sleep(200);showSoftware();
+  }
+  setEmpQR();
+}
+function showSoftware(){
+  const apps=[{e:'💻',n:'VS Code'},{e:'🐳',n:'Docker'},{e:'🔗',n:'GitHub Desktop'},{e:'📮',n:'Postman'},{e:'💬',n:'Slack'},{e:'📹',n:'Zoom'},{e:'🔐',n:'1Password'},{e:'🌐',n:'Chrome'}];
+  eAddNode(`<div class="sw-card"><div style="font-size:11px;font-weight:500;margin-bottom:2px;">Software for your laptop</div><div style="font-size:10px;color:var(--muted);margin-bottom:6px;">AI-suggested for Software Engineer. Uncheck anything you don't need.</div><div class="sw-grid">${apps.map((a,i)=>`<div class="swi on" id="swi-${i}" onclick="this.classList.toggle('on')"><span class="swi-ico">${a.e}</span><span class="swi-name">${a.n}</span><div class="swi-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></div>`).join('')}</div><button class="btn-confirm" onclick="confirmSw()">Confirm Selection</button><button class="btn-skip-sw" onclick="skipSw()">Skip — I'll decide later</button></div>`);
+}
+function confirmSw(){const sel=Array.from(document.querySelectorAll('.swi.on')).map(e=>e.querySelector('.swi-name').textContent);document.querySelector('.sw-card')?.remove();eAddA(`✓ <strong>${sel.length} apps</strong> confirmed. The DT team will have these ready. Enjoy your new laptop! 🎉`);setEmpQR();}
+function skipSw(){document.querySelector('.sw-card')?.remove();eAddA(`No problem — install from the company portal anytime. 🎉`);setEmpQR();}
+
+// ── FULFILLER ──
+const FREQS=[
+  {id:'REQ001',name:'Priya Sharma',type:'assign',label:'💻 Laptop Assignment',meta:'EMP001 · Software Engineer · Hyderabad',raised:'Raised by: HR · New joiner Jun 08',status:'pending',
+    fields:[{id:'empName',label:'Employee Name',val:'Priya Sharma'},{id:'empId',label:'Employee ID',val:'EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager'],val:'Software Engineer'},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai'],val:'Hyderabad'}]},
+  {id:'REQ002',name:'Ananya Iyer',type:'repair',label:'🔧 Repair Request',meta:'EMP003 · TAG-00441 · Screen damage',raised:'Raised by: Employee · 25 min ago',status:'pending',
+    fields:[{id:'empName',label:'Employee Name',val:'Ananya Iyer'},{id:'empId',label:'Employee ID',val:'EMP003'},{id:'assetTag',label:'Asset Tag',val:'TAG-00441'},{id:'issueDesc',label:'Issue',val:'Screen is cracked'}]},
+  {id:'REQ003',name:'Raj Mehta',type:'return',label:'↩ Laptop Return',meta:'EMP002 · TAG-00391 · Offboarding Jun 15',raised:'Raised by: Manager · 1 hour ago',status:'done',
+    fields:[{id:'empName',label:'Employee Name',val:'Raj Mehta'},{id:'empId',label:'Employee ID',val:'EMP002'},{id:'assetTag',label:'Asset Tag',val:'TAG-00391'}]},
+  {id:'REQ004',name:'Karan Singh',type:'assign',label:'💻 Laptop Assignment',meta:'EMP004 · Sales Executive · Mumbai',raised:'Raised by: HR · New joiner Jun 05',status:'done',
+    fields:[{id:'empName',label:'Employee Name',val:'Karan Singh'},{id:'empId',label:'Employee ID',val:'EMP004'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager'],val:'Sales Executive'},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai'],val:'Mumbai'}]}
+];
+const FSTEPS={
+  assign:[{n:'Validate employee & entitlement'},{n:'Check asset inventory'},{n:'Assign asset & update status'},{n:'Update CMDB & hostname'},{n:'AI software suggestion'},{n:'Generate confirmation'}],
+  repair:[{n:'Validate employee & asset'},{n:'Assess repair urgency'},{n:'Check loaner availability'},{n:'Assign loaner & flag repair'},{n:'Generate confirmation'}],
+  return:[{n:'Validate employee & asset'},{n:'Check return eligibility'},{n:'Clear assignment & update status'},{n:'Flag for wiping & inspection'},{n:'Generate return confirmation'}]
+};
+let qFilterVal='all',activeFreq=null,fIssueN=9;
+
+// Listen for new requests from Employee
+WeaverEvents.on(function(type, data){
+  if(type === 'new_repair_request'){
+    // Add to Fulfiller queue dynamically
+    const exists = FREQS.find(r=>r.id===data.ref);
+    if(!exists){
+      FREQS.unshift({
+        id:data.ref, name:data.name, type:'repair',
+        label:'🔧 Repair Request',
+        meta:`${data.empId} · ${data.asset} · ${data.issue}`,
+        raised:`Raised by: Employee · Just now`,
+        status:'pending',
+        fields:[
+          {id:'empName',label:'Employee Name',val:data.name},
+          {id:'empId',label:'Employee ID',val:data.empId},
+          {id:'assetTag',label:'Asset Tag',val:data.asset},
+          {id:'issueDesc',label:'Issue',val:data.issue}
+        ]
+      });
+      if(currentRole==='fulfiller') renderQueue();
+    }
+  }
+});
+
+function renderQueue(){
+  const list=document.getElementById('queueList');if(!list)return;
+  const filtered=FREQS.filter(r=>{
+    if(qFilterVal==='pending')return r.status==='pending';
+    if(qFilterVal==='done')return r.status==='done';
+    return true;
+  });
+  list.innerHTML=filtered.map(r=>`
+    <div onclick="selectFreq('${r.id}')" style="padding:0.75rem;border-radius:8px;border:1px solid ${activeFreq===r.id?'var(--amber)':r.status==='done'?'var(--border)':'var(--border)'};background:${activeFreq===r.id?'rgba(255,170,61,0.04)':'var(--surf)'};margin-bottom:6px;cursor:pointer;opacity:${r.status==='done'?0.55:1};transition:all 0.12s;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:500;">${r.name}</div>
+        <span style="font-size:8px;font-weight:600;padding:2px 6px;border-radius:3px;background:${r.status==='done'?'rgba(61,255,160,0.1)':r.status==='running'?'rgba(255,170,61,0.1)':'rgba(90,180,255,0.1)'};color:${r.status==='done'?'var(--green)':r.status==='running'?'var(--amber)':'var(--blue)'};">${r.status==='done'?'DONE':r.status==='running'?'RUNNING':'NEW'}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);">${r.label}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px;">${r.meta}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px;font-style:italic;">${r.raised}</div>
+    </div>`).join('');
+  const pending=FREQS.filter(r=>r.status==='pending').length;
+  const sub=document.getElementById('queueSub');if(sub)sub.textContent=`${FREQS.length} requests · ${pending} pending`;
+}
+
+function qFilter(val,el){
+  qFilterVal=val;
+  document.querySelectorAll('#page-fulfiller .lfb').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderQueue();
+}
+
+function selectFreq(id){
+  activeFreq=id;
+  const r=FREQS.find(x=>x.id===id);
+  renderQueue();
+  const ct=document.getElementById('fChatTitle');if(ct)ct.textContent=r.name;
+  const cs=document.getElementById('fChatSub');if(cs)cs.textContent=r.label+' · '+r.meta;
+  const eb=document.getElementById('fExecBadge');if(eb){eb.className='esb esb-idle';eb.textContent='IDLE';}
+  const ec=document.getElementById('fExecContent');if(ec)ec.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;opacity:0.3;gap:8px;"><div style="font-size:22px;">⟳</div><div style="font-size:11px;color:var(--muted);text-align:center;">Hit Run Workflow to start.</div></div>`;
+  const msgs=document.getElementById('fMsgs');if(!msgs)return;
+  msgs.innerHTML=`<div style="max-width:85%;"><div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;line-height:1.65;">
+    <strong>${r.label}</strong> · ${r.name}<br><br>${r.raised}<br>Details: ${r.meta}<br><br>
+    ${r.status==='done'?'✓ This request has already been processed.':'Fill in the form below and hit <strong>Run Workflow</strong>.'}
+  </div></div>`;
+  if(r.status!=='done'){
+    msgs.innerHTML+=`<div style="max-width:85%;" id="fFormArea"><div style="background:var(--surf);border:1px solid var(--border2);border-radius:10px;padding:0.9rem;max-width:300px;">
+      <p style="font-size:12px;color:var(--mid);margin-bottom:10px;">Running <strong>${r.label}</strong>.<br>Confirm details:</p>
+      ${r.fields.map(f=>f.type==='select'
+        ?`<div style="margin-bottom:8px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">${f.label}</div><select style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text);font-family:inherit;outline:none;" id="ffi-${f.id}">${f.opts.map(o=>`<option ${o===f.val?'selected':''}>${o}</option>`).join('')}</select></div>`
+        :`<div style="margin-bottom:8px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">${f.label}</div><input style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text);font-family:inherit;outline:none;" id="ffi-${f.id}" value="${f.val}"/></div>`
+      ).join('')}
+      <button onclick="fRunWorkflow('${r.id}')" style="width:100%;padding:8px;background:var(--amber);border:none;color:#0a0e13;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px;">▶ Run Workflow — ${FSTEPS[r.type].length} Steps</button>
+    </div></div>`;
+  }
+  msgs.scrollTop=9999;
+}
+
+function fAddA(html){const m=document.getElementById('fMsgs');if(!m)return;m.innerHTML+=`<div style="max-width:85%;"><div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;line-height:1.65;">${html}</div></div>`;m.scrollTop=9999;}
+function fAddU(t){const m=document.getElementById('fMsgs');if(!m)return;m.innerHTML+=`<div style="margin-left:auto;max-width:80%;"><div style="background:rgba(255,170,61,0.08);border:1px solid rgba(255,170,61,0.2);border-radius:10px 10px 2px 10px;padding:9px 12px;font-size:12px;">${t}</div></div>`;m.scrollTop=9999;}
+
+function fAddStep(n,name,st,badge,detail){
+  const icons={p:`<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3dffa0" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,w:`<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffaa3d" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`,r:`<span class="spin"></span>`};
+  const sc={p:'si-p',w:'si-w',r:'si-r'};
+  const bc={p:'srb-p',w:'srb-w'};
+  const html=`<div class="step" id="fst${n}"><div class="step-hdr"><div class="si ${sc[st]||'si-r'}">${icons[st]||''}</div><div><div class="sn">${n}. ${name}</div>${badge?`<span class="srb ${bc[st]||''}">${badge}</span>`:''}</div></div>${detail?`<div class="sd">${detail}</div>`:''}</div>`;
+  const ex=document.getElementById('fst'+n);
+  if(ex)ex.outerHTML=html;else{const s=document.getElementById('fSteps');if(s)s.innerHTML+=html;}
+  document.getElementById('fExecContent').scrollTop=9999;
+}
+
+function fSetDone(cls,rb,summary,appFn){
+  const eb=document.getElementById('fExecBadge');if(eb){eb.className='esb esb-done';eb.textContent='COMPLETE';}
+  const rbCls=cls==='ok'?'rb-ok':'rb-warn';
+  document.getElementById('fExecContent').innerHTML+=`<div class="rating"><div class="rl">Overall Status</div><span class="rb-pill ${rbCls}">${rb}</span><div class="rs">${summary}</div><button class="btn-approve" onclick="${appFn}">✓ Approve Request</button><button class="btn-reject" style="width:100%;padding:6px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;margin-top:5px;">✕ Reject / Escalate</button></div>`;
+}
+
+async function fRunWorkflow(id){
+  const r=FREQS.find(x=>x.id===id);
+  const vals={};r.fields.forEach(f=>{const el=document.getElementById('ffi-'+f.id);if(el)vals[f.id]=el.value.trim();});
+  const name=vals.empName||r.name;
+  document.getElementById('fFormArea')?.remove();
+  fAddU(`Running ${r.label} for ${name}`);
+  fAddA(`Starting <strong>${r.label}</strong> for ${name}. Running ${FSTEPS[r.type].length} steps.`);
+  const eb=document.getElementById('fExecBadge');if(eb){eb.className='esb esb-run';eb.textContent='RUNNING';}
+  const ec=document.getElementById('fExecContent');if(ec)ec.innerHTML=`<div class="subj"><div class="subj-name">${r.label} — ${name}</div><div class="subj-time">${new Date().toLocaleTimeString()}</div></div><div class="sl">Step Results</div><div id="fSteps"></div>`;
+  r.status='running';renderQueue();
+  await sleep(300);
+
+  if(r.type==='assign'){
+    const role=vals.empRole||'Software Engineer';const loc=vals.empLoc||'Hyderabad';
+    const tier=['Software Engineer','Product Manager','Designer'].includes(role)?'premium':'standard';
+    const noStock=tier==='premium'&&loc==='Bangalore';
+    fAddStep(1,'Validate employee & entitlement','r','');await sleep(400);fAddStep(1,'Validate employee & entitlement','p','VALIDATED',`${name} · ${role} → ${tier.toUpperCase()} tier`);await sleep(500);
+    fAddStep(2,'Check asset inventory','r','');await sleep(400);
+    if(noStock){fAddStep(2,'Check asset inventory','w','NO STOCK',`No ${tier} laptops in ${loc}`);fSetDone('warn','🟡 PROCUREMENT NEEDED',`No ${tier} laptops in ${loc}. Raise procurement.`,`fApprove('${id}','PENDING','${name}','NONE')`);r.status='done';renderQueue();return;}
+    fAddStep(2,'Check asset inventory','p','FOUND',`TAG-00581 (MacBook Pro 14 M3) in ${loc}`);await sleep(500);
+    fAddStep(3,'Assign asset & update status','r','');await sleep(400);fAddStep(3,'Assign asset & update status','p','ASSIGNED',`Status → In Use · ${new Date().toLocaleDateString('en-GB')}`);await sleep(500);
+    fAddStep(4,'Update CMDB & hostname','r','');await sleep(400);fAddStep(4,'Update CMDB & hostname','p','CMDB UPDATED','TAG-00581 · Hostname generated');await sleep(500);
+    fAddStep(5,'AI software suggestion','r','');await sleep(400);fAddStep(5,'AI software suggestion','p','BUNDLE READY','Engineering Bundle via Claude API');await sleep(500);
+    fAddStep(6,'Generate confirmation','r','');await sleep(400);fAddStep(6,'Generate confirmation','p','COMPLETE',`Teams notification queued → ${name}`);
+    fAddA(`Workflow complete. Review and approve.`);
+    fSetDone('ok','🟢 ASSIGNED',`${name} assigned TAG-00581 (MacBook Pro 14 M3). Teams notification queued.`,`fApprove('${id}','ASSIGNED','${name}','TAG-00581')`);
+  }else if(r.type==='repair'){
+    const iss=vals.issueDesc||'Screen damage';const high=/(screen|battery|broken|crack)/i.test(iss);
+    fAddStep(1,'Validate employee & asset','r','');await sleep(400);fAddStep(1,'Validate employee & asset','p','VALIDATED',`${name} confirmed`);await sleep(500);
+    fAddStep(2,'Assess repair urgency','r','');await sleep(400);fAddStep(2,'Assess repair urgency',high?'w':'p',high?'HIGH URGENCY':'STANDARD',iss);await sleep(500);
+    fAddStep(3,'Check loaner availability','r','');await sleep(900);fAddStep(3,'Check loaner availability','p','LOANER FOUND','TAG-00600 (MacBook Air M2)');await sleep(500);
+    fAddStep(4,'Assign loaner & flag repair','r','');await sleep(400);fAddStep(4,'Assign loaner & flag repair','w','UNDER REPAIR',`${vals.assetTag||'TAG-00441'} → Under Repair · Loaner assigned`);await sleep(500);
+    fAddStep(5,'Generate confirmation','r','');await sleep(900);fAddStep(5,'Generate confirmation','p','COMPLETE',`Teams notification queued → ${name}`);
+    fAddA(`Workflow complete. Loaner assigned. Ready to approve.`);
+    fSetDone('warn','🟡 REPAIR IN PROGRESS',`Loaner TAG-00600 assigned to ${name}. Original under repair.`,`fApprove('${id}','REPAIR','${name}','${vals.assetTag||'TAG-00441'}')`);
+  }else{
+    fAddStep(1,'Validate employee & asset','r','');await sleep(400);fAddStep(1,'Validate employee & asset','p','VALIDATED',`${name} confirmed`);await sleep(500);
+    fAddStep(2,'Check return eligibility','r','');await sleep(400);fAddStep(2,'Check return eligibility','w','RETURN DUE','Exit date confirmed');await sleep(500);
+    fAddStep(3,'Clear assignment & update status','r','');await sleep(400);fAddStep(3,'Clear assignment & update status','p','RETURNED','Status → In Stock');await sleep(500);
+    fAddStep(4,'Flag for wiping & inspection','r','');await sleep(750);fAddStep(4,'Flag for wiping & inspection','w','WIPE REQUIRED','DT team notified');await sleep(500);
+    fAddStep(5,'Generate return confirmation','r','');await sleep(400);fAddStep(5,'Generate return confirmation','p','COMPLETE','Return logged');
+    fAddA(`Workflow complete. Device returned.`);
+    fSetDone('ok','🟢 RETURNED',`${name}'s device returned. Flagged for wiping.`,`fApprove('${id}','RETURNED','${name}','${vals.assetTag||'TAG-00391'}')`);
+  }
+  r.status='done';renderQueue();
+}
+
+async function fApprove(id,type,name,asset){
+  document.querySelector('.btn-approve')?.remove();
+  fAddA(`<span class="spin"></span> Processing approval...`);
+
+  const eventMap = {
+    'ASSIGNED':'LAPTOP_ASSIGNED',
+    'REPAIR':'REPAIR_APPROVED',
+    'RETURNED':'RETURN_PROCESSED',
+    'REFRESH':'REFRESH_PROCESSED',
+    'PENDING':'PROCUREMENT_NEEDED'
+  };
+  const eventType = eventMap[type] || type;
+  const ref = `WVR-${String(Date.now()).slice(-4)}`;
+
+  const body = [
+    `name: ${name}`,
+    `asset: ${asset}`,
+    `type: ${type}`,
+    `ref: ${ref}`,
+    `model: MacBook Pro 14 M3`,
+    `loaner: TAG-00600 (MacBook Air M2)`,
+    `timestamp: ${new Date().toISOString()}`
+  ].join('\n');
+
+  try {
+    const issue = await GH.createIssue(
+      `[WEAVER] ${eventType} — ${name}`,
+      body,
+      ['weaver-event', eventType.toLowerCase()]
+    );
+    const url = issue.html_url || `https://github.com/kllmmeghana/weaver-assets/issues`;
+    const num = issue.number || '?';
+    fAddA(`<span style="color:var(--green)">✓ Approved — ${ref}</span><br><span style="font-size:10px;color:var(--muted);">Employee will be notified shortly.</span>`);
+
+    // Also emit locally for same-session
+    if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
+    else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
+    else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
+    else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+
+  } catch(e){
+    fAddA(`<span style="color:var(--green)">✓ Approved — notifying employee.</span>`);
+    if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
+    else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
+    else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
+    else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+  }
+}
+
+function fSendChat(){
+  const inp=document.getElementById('fChatInp');const v=inp?.value.trim();if(!v)return;
+  inp.value='';fAddU(v);
+  setTimeout(()=>{
+    const l=v.toLowerCase();
+    if(l.includes('inventory')||l.includes('available'))fAddA(`Available assets:<br>• Hyderabad: 2 premium (MacBook Pro 14 M3)<br>• Bangalore: 1 standard (Dell Latitude)<br>• Mumbai: 1 standard (Dell Latitude)<br>• Chennai: 2 standard (MacBook Air M2)`);
+    else if(l.includes('priya'))selectFreq('REQ001');
+    else if(l.includes('ananya'))selectFreq('REQ002');
+    else fAddA(`Select a request from the queue to process it.`);
+  },400);
+}
+
+renderRepo();
+renderLibrary();
+</script>
+</body>
+</html>
