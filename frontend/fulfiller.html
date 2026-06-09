@@ -514,12 +514,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
         <div class="hero-sub">Natural language in. Production-ready workflows out.</div>
       </div>
       <div class="slabel">Describe what you want to build</div>
-      <textarea class="prompt-ta" id="promptTa" rows="4">When a new employee joins, run a full laptop asset assignment. Validate the employee and their role-based entitlement tier, check asset inventory for an available unit matching the spec and location, assign the laptop and update its status to In Use, update the CMDB with asset tag and hostname, suggest software based on their role using AI, and generate an assignment confirmation report.</textarea>
+      <textarea class="prompt-ta" id="promptTa" rows="4">When a device is reported as damaged, validate the employee and their asset record, assess repair urgency based on issue severity, locate an available loaner unit in the same office, assign the loaner and flag the original device as Under Repair in CMDB, notify the DT team to pick up the device, and generate a repair ticket with estimated turnaround.</textarea>
       <div class="wf-tabs">
-        <button class="wftab active" onclick="setWF(this,'assign')">💻 Laptop Assignment</button>
+        <button class="wftab" onclick="setWF(this,'assign')">💻 Laptop Assignment</button>
         <button class="wftab" onclick="setWF(this,'return')">↩ Laptop Return</button>
-        <button class="wftab" onclick="setWF(this,'repair')">🔧 Repair Request</button>
+        <button class="wftab active" onclick="setWF(this,'repair')">🔧 Repair Request</button>
         <button class="wftab" onclick="setWF(this,'refresh')">🔄 Laptop Refresh</button>
+        <button class="wftab" onclick="setWF(this,'relocate')">📍 Device Relocation</button>
       </div>
       <div class="slabel" style="margin-top:1.25rem;">Add additional context</div>
       <div class="ctx-grid">
@@ -725,6 +726,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
         <button class="eqb" onclick="empQuick('repair')">🔧 Repair</button>
         <button class="eqb" onclick="empQuick('return')">↩ Return</button>
         <button class="eqb" onclick="empQuick('refresh')">🔄 Refresh</button>
+        <button class="eqb" onclick="empQuick('relocate')">📍 Relocate</button>
         <button class="eqb" onclick="empQuick('status')">📋 Status</button>
       </div>
       <div class="einp-row">
@@ -895,7 +897,8 @@ const PROMPTS={
   assign:"When a new employee joins, run a full laptop asset assignment. Validate the employee and their role-based entitlement tier, check asset inventory for an available unit matching the spec and location, assign the laptop and update its status to In Use, update the CMDB with asset tag and hostname, suggest software based on their role using AI, and generate an assignment confirmation report.",
   return:"When an employee is offboarding, run a full laptop return workflow. Validate the employee's exit date and current asset assignment, check if the asset is overdue for return, update the asset status to In Stock and clear the assigned employee, flag the device for wiping and inspection, and generate a return confirmation report.",
   repair:"When an employee reports a laptop issue, run a repair request workflow. Validate the employee and their current asset, assess repair urgency based on issue type, check for an available loaner unit in the same location, assign the loaner and flag the original asset as Under Repair, and generate a repair ticket with DT team escalation.",
-  refresh:"When an employee requests a laptop refresh, check device age against the refresh policy, validate eligibility, initiate replacement process, and generate a refresh confirmation."
+  refresh:"When an employee requests a laptop refresh, check device age against the refresh policy, validate eligibility, initiate replacement process, and generate a refresh confirmation.",
+  relocate:"When an employee is relocating from Hyderabad to Bangalore, check if their current laptop is location-locked, update the asset location in CMDB, validate that the device meets Bangalore office compliance standards, reassign the asset to the new location, notify the Bangalore IT desk to prep the workstation, and generate a relocation confirmation for HR."
 };
 const BUILDER_STEPS=[
   {name:'Validate employee & entitlement',desc:'Confirm employee exists and map role to laptop tier.',tools:[{n:'employees.check',t:'fly'},{n:'entitlement.get_tier',t:'fly'}]},
@@ -934,10 +937,18 @@ const ALL_BUILDER_STEPS={
     {name:'Check replacement inventory',desc:'Find available replacement unit matching employee tier and location.',tools:[{n:'assets.inventory_check',t:'fly'}]},
     {name:'Initiate replacement order',desc:'Assign new device, flag old device for return and wipe.',tools:[{n:'assets.assign',t:'fly'},{n:'github.update_asset',t:'gh'}]},
     {name:'Generate refresh confirmation',desc:'Create GitHub issue and send refresh checklist to employee.',tools:[{n:'github.create_issue',t:'gh'}]}
+  ],
+  relocate:[
+    {name:'Validate employee & relocation request',desc:'Confirm employee identity and verify approved relocation request.',tools:[{n:'employees.check',t:'fly'},{n:'relocation.verify_request',t:'fly'}]},
+    {name:'Check device location lock policy',desc:'Verify if current device is location-locked or region-restricted.',tools:[{n:'assets.verify',t:'fly'},{n:'policy.check_location_lock',t:'fly'}]},
+    {name:'Validate office compliance standards',desc:'Use AI to check if device meets destination office compliance requirements.',tools:[{n:'ai.compliance_check',t:'ai'}]},
+    {name:'Update asset location in CMDB',desc:'Reassign asset to new office location and update all CI records.',tools:[{n:'cmdb.update',t:'fly'},{n:'github.update_asset',t:'gh'}]},
+    {name:'Notify destination IT desk',desc:'Alert Bangalore IT desk to prep workstation and access credentials.',tools:[{n:'notify.it_desk',t:'fly'},{n:'github.create_issue',t:'gh'}]},
+    {name:'Generate relocation confirmation for HR',desc:'Create confirmation report with asset details, new location, and IT readiness.',tools:[{n:'ai.generate_report',t:'ai'},{n:'github.create_issue',t:'gh'}]}
   ]
 };
-const BUILDER_LABELS={assign:'Laptop Assignment · 6 steps',return:'Laptop Return · 5 steps',repair:'Repair Request · 5 steps',refresh:'Laptop Refresh · 5 steps'};
-let currentWF='assign';
+const BUILDER_LABELS={assign:'Laptop Assignment · 6 steps',return:'Laptop Return · 5 steps',repair:'Repair Request · 5 steps',refresh:'Laptop Refresh · 5 steps',relocate:'Device Relocation · 6 steps'};
+let currentWF='repair';
 const TOOL_DESCS={
   'employees.check':'Lookup employee by ID or name. Returns role, dept, location, status.',
   'entitlement.get_tier':'Maps employee role to laptop tier (premium / standard).',
@@ -970,6 +981,7 @@ const WFICONS={
   assign:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
   return:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>`,
   repair:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+  relocate:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
   draft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
 };
 const TC={fly:'var(--purple)',ai:'var(--amber)',gh:'var(--blue)'};
@@ -1077,23 +1089,96 @@ Workflow types: assign=laptop assignment, repair=repair request, return=laptop r
 // ── BUILDER ──
 async function startBuilder(){
   builderDone=false;
-  const steps=ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
-  const total=steps.length;
   document.getElementById('stepsContainer').innerHTML='';
   document.getElementById('toolsContainer').innerHTML='';
   document.getElementById('thinking').style.display='flex';
   document.getElementById('deployBtn').classList.remove('ready');
-  document.getElementById('bbLeft').innerHTML=`Building... <strong>0 / ${total}</strong> steps ready`;
+
   const badge=document.getElementById('blBadge');
-  if(badge) badge.textContent = (window._parsedWorkflow?.name) || BUILDER_LABELS[currentWF] || 'Workflow';
-  await sleep(400);
-  document.getElementById('thinking').style.display='none';
-  const parsedSummary = window._parsedWorkflow?.summary;
-  document.getElementById('blSub').textContent = parsedSummary ? `Claude parsed: "${parsedSummary}"` : 'Building steps one by one...';
+  const prompt = document.getElementById('promptTa')?.value?.trim()||'';
+
+  // Check if user typed a custom prompt (not one of the 4 predefined ones)
+  const isCustomPrompt = !Object.values(PROMPTS).some(p=>p.trim()===prompt);
+
+  let steps;
+  if(isCustomPrompt && prompt.length > 20){
+    // ── USE CLAUDE TO GENERATE STEPS FOR CUSTOM PROMPT ──
+    if(badge) badge.textContent = 'AI Generated Workflow';
+    document.getElementById('bbLeft').innerHTML='<span class="spin"></span> Claude is analysing your workflow...';
+    document.getElementById('blSub').textContent='Reading your prompt and generating custom steps...';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1000,
+          system:`You are a workflow architect for IT asset management. Given a workflow description, generate the exact steps and tools needed.
+
+Return JSON only, no markdown:
+{
+  "name": "Workflow Name",
+  "type": "assign|repair|return|refresh",
+  "summary": "one line summary",
+  "steps": [
+    {
+      "name": "Step name",
+      "desc": "What this step does",
+      "tools": [
+        {"n": "tool.name", "t": "fly|ai|gh"}
+      ]
+    }
+  ]
+}
+
+Tool types: "fly"=built on the fly, "ai"=Claude API, "gh"=GitHub/MCP.
+Common tools: employees.check, assets.inventory_check, assets.assign, assets.verify, cmdb.update, repair.assess_urgency, entitlement.get_tier, ai.suggest_software, github.create_issue, github.update_asset.
+Generate 4-7 steps. Make tool names descriptive and specific to the workflow.`,
+          messages:[{role:'user', content:`Generate workflow steps for: "${prompt}"`}]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text||'';
+      const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+
+      steps = parsed.steps || ALL_BUILDER_STEPS[currentWF];
+      window._parsedWorkflow = parsed;
+      currentWF = parsed.type || currentWF;
+      if(badge) badge.textContent = `${parsed.name} · ${steps.length} steps · AI Generated`;
+      document.getElementById('thinking').style.display='none';
+      document.getElementById('blSub').textContent=`Claude parsed: "${parsed.summary}"`;
+
+    } catch(e){
+      // Fallback to predefined steps if Claude fails
+      steps = ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
+      document.getElementById('thinking').style.display='none';
+      document.getElementById('blSub').textContent='Using predefined steps (AI unavailable)';
+      if(badge) badge.textContent = BUILDER_LABELS[currentWF]||'Workflow';
+    }
+  } else {
+    // ── USE PREDEFINED STEPS ──
+    steps = ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
+    await sleep(400);
+    document.getElementById('thinking').style.display='none';
+    const parsedSummary = window._parsedWorkflow?.summary;
+    document.getElementById('blSub').textContent = parsedSummary ? `Claude parsed: "${parsedSummary}"` : 'Building steps one by one...';
+    if(badge) badge.textContent = (window._parsedWorkflow?.name) || BUILDER_LABELS[currentWF] || 'Workflow';
+    window._isAIGenerated = false;
+  }
+
+  const total = steps.length;
+  document.getElementById('bbLeft').innerHTML=`Building... <strong>0 / ${total}</strong> steps ready`;
+
   for(let i=0;i<steps.length;i++){
     await buildStep(steps[i],i+1);
     document.getElementById('bbLeft').innerHTML=`Building... <strong>${i+1} / ${total}</strong> steps ready`;
   }
+
+  // Store built steps so deployWorkflow can use them
+  window._lastBuiltSteps = steps;
+  window._isAIGenerated = isCustomPrompt && prompt.length > 20;
+
   const toolCount=steps.reduce((a,s)=>a+s.tools.length,0);
   document.getElementById('blSub').textContent=`${total} steps · ${toolCount} tools · ready to deploy`;
   document.getElementById('bbLeft').innerHTML=`<span style="color:var(--green)">✓ Ready</span> · ${total} steps · ${toolCount} tools saved to Library`;
@@ -1140,7 +1225,10 @@ const WF_TEMPLATES = {
     fields:[{id:'empName',label:'Employee Name',ph:'e.g. Ananya Iyer'},{id:'empId',label:'Employee ID',ph:'e.g. EMP003'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00441'},{id:'issueDesc',label:'Issue',ph:'e.g. Screen damage'}]},
   refresh:{name:'Laptop Refresh',type:'assign',desc:'Draft — checks device age against refresh policy, validates eligibility, initiates replacement.',
     stepsArr:[{name:'Validate employee & device age',tool:'employees.check · assets.verify'},{name:'Check refresh eligibility',tool:'entitlement.get_tier'},{name:'Initiate replacement order',tool:'assets.assign'},{name:'Generate refresh confirmation',tool:'github.create_issue'}],
-    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]}
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]},
+  relocate:{name:'Device Relocation',type:'relocate',desc:'Validates relocation request, checks device location policy, validates compliance, updates CMDB, notifies destination IT desk, generates HR confirmation.',
+    stepsArr:[{name:'Validate employee & relocation request',tool:'employees.check · relocation.verify_request'},{name:'Check device location lock policy',tool:'assets.verify · policy.check_location_lock'},{name:'Validate office compliance standards',tool:'ai.compliance_check'},{name:'Update asset location in CMDB',tool:'cmdb.update · github.update_asset'},{name:'Notify destination IT desk',tool:'notify.it_desk · github.create_issue'},{name:'Generate relocation confirmation for HR',tool:'ai.generate_report · github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Priya Sharma'},{id:'empId',label:'Employee ID',ph:'e.g. EMP001'},{id:'fromLoc',label:'From Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai']},{id:'toLoc',label:'To Location',type:'select',opts:['Bangalore','Hyderabad','Mumbai','Chennai']},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00581'}]}
 };
 
 const TOOL_TEMPLATES = {
@@ -1153,68 +1241,117 @@ const TOOL_TEMPLATES = {
   'cmdb.update':{name:'cmdb.update',type:'fly',op:'write',desc:'Links CI record to employee, generates hostname.'},
   'ai.suggest_software':{name:'ai.suggest_software',type:'ai',op:'action',desc:'Calls Claude API. Returns personalised software bundle.'},
   'github.update_asset':{name:'github.update_asset',type:'gh',op:'write',desc:'Commits updated assets.json via GitHub Contents API.'},
-  'github.create_issue':{name:'github.create_issue',type:'gh',op:'action',desc:'Creates GitHub issue as audit trail.'}
+  'github.create_issue':{name:'github.create_issue',type:'gh',op:'action',desc:'Creates GitHub issue as audit trail.'},
+  'relocation.verify_request':{name:'relocation.verify_request',type:'fly',op:'read',desc:'Validates approved relocation request against HR records.'},
+  'policy.check_location_lock':{name:'policy.check_location_lock',type:'fly',op:'read',desc:'Checks if device is location-locked or region-restricted.'},
+  'ai.compliance_check':{name:'ai.compliance_check',type:'ai',op:'action',desc:'Uses Claude to validate device compliance for destination office.'},
+  'notify.it_desk':{name:'notify.it_desk',type:'fly',op:'action',desc:'Sends notification to destination IT desk to prep workstation.'},
+  'ai.generate_report':{name:'ai.generate_report',type:'ai',op:'action',desc:'Uses Claude to generate a formatted confirmation report.'}
 };
 
 async function deployWorkflow(){
-  const steps = ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
+  // ── Get the actual steps that were built (predefined or AI-generated) ──
+  const builtSteps = window._lastBuiltSteps || ALL_BUILDER_STEPS[currentWF] || ALL_BUILDER_STEPS.assign;
+  const parsed = window._parsedWorkflow;
+
+  // Determine workflow name and description
   const tmpl = WF_TEMPLATES[currentWF];
-  if(!tmpl){ goPage('repo'); return; }
+  const isAIGenerated = window._isAIGenerated || false;
+  const wfName = parsed?.name || tmpl?.name || 'Custom Workflow';
+  const wfDesc = parsed?.summary || tmpl?.desc || 'AI-generated workflow';
+  const wfId = (currentWF||'custom') + '_' + SESSION_ID + '_' + Date.now();
 
-  // Build workflow object
-  const wfId = currentWF + '_' + SESSION_ID;
-  const toolIds = [...new Set(steps.flatMap(s=>s.tools.map(t=>t.n)))];
-  const toolTypes = steps.flatMap(s=>s.tools.map(t=>t.t));
+  // ── Build stepsArr for modal display ──
+  const stepsArr = builtSteps.map(s=>({
+    name: s.name,
+    tool: s.tools.map(t=>t.n).join(' · ')
+  }));
 
+  // ── Collect all unique tools from built steps ──
+  const allToolIds = [...new Set(builtSteps.flatMap(s=>s.tools.map(t=>t.n)))];
+  const toolTypes = builtSteps.flatMap(s=>s.tools.map(t=>t.t));
+
+  // ── Determine fields for run form based on workflow type ──
+  const fieldMap = {
+    assign: [{id:'empName',label:'Employee Name',ph:'e.g. Priya Sharma'},{id:'empId',label:'Employee ID',ph:'e.g. EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager']},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai']}],
+    repair: [{id:'empName',label:'Employee Name',ph:'e.g. Ananya Iyer'},{id:'empId',label:'Employee ID',ph:'e.g. EMP003'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00441'},{id:'issueDesc',label:'Issue',ph:'e.g. Screen damage'}],
+    return: [{id:'empName',label:'Employee Name',ph:'e.g. Raj Mehta'},{id:'empId',label:'Employee ID',ph:'e.g. EMP002'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00391'}],
+    refresh: [{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]
+  };
+  const wfFields = fieldMap[currentWF] || [{id:'empName',label:'Employee Name',ph:'Enter name'},{id:'empId',label:'Employee ID',ph:'Enter ID'},{id:'notes',label:'Notes',ph:'Additional details'}];
+
+  // ── Build workflow object ──
   const wf = {
     id: wfId,
-    name: tmpl.name,
-    type: currentWF,
+    name: wfName,
+    type: currentWF || 'custom',
     status: 'live',
-    desc: tmpl.desc,
-    steps: steps.length,
+    desc: wfDesc,
+    steps: builtSteps.length,
     tools: toolTypes,
     runs: 0,
     isNew: true,
-    stepsArr: tmpl.stepsArr,
-    fields: tmpl.fields,
+    isAIGenerated,
+    stepsArr,
+    fields: wfFields,
     deployedAt: new Date().toISOString(),
-    session: SESSION_ID
+    session: SESSION_ID,
+    prompt: document.getElementById('promptTa')?.value?.trim() || ''
   };
 
-  // Add to session WFS
-  const existing = WFS.findIndex(w=>w.type===currentWF);
+  // ── Push to Workflow Repository ──
+  const existing = WFS.findIndex(w=>w.id===wfId || (w.type===currentWF && w.session===SESSION_ID));
   if(existing >= 0) WFS[existing] = wf;
   else WFS.push(wf);
 
-  // Add tools to TOOLS
-  toolIds.forEach(toolName=>{
-    if(!TOOLS.find(t=>t.name===toolName)){
+  // ── Push tools to Library ──
+  allToolIds.forEach(toolName=>{
+    const existing = TOOLS.find(t=>t.name===toolName);
+    if(existing){
+      // Tool already exists — add this workflow to its wfs list if not already there
+      if(!existing.wfs.includes(wfName)) existing.wfs.push(wfName);
+    } else {
+      // New tool — add to library
       const tmplTool = TOOL_TEMPLATES[toolName];
       if(tmplTool){
+        TOOLS.push({...tmplTool, wfs:[wfName], runs:0, isNew:true});
+      } else {
+        // AI-generated tool not in templates — create dynamically
+        const toolStep = builtSteps.find(s=>s.tools.some(t=>t.n===toolName));
+        const toolType = toolStep?.tools.find(t=>t.n===toolName)?.t || 'fly';
+        const typeLabels = {fly:'Built on the fly',ai:'Claude API',gh:'GitHub / MCP'};
         TOOLS.push({
-          ...tmplTool,
-          wfs:[tmpl.name],
-          runs:0,
-          isNew:true
+          name: toolName,
+          type: toolType,
+          op: toolName.includes('update')||toolName.includes('assign')||toolName.includes('create')?'write':toolName.includes('suggest')||toolName.includes('notify')||toolName.includes('generate')?'action':'read',
+          desc: `${typeLabels[toolType]} — ${toolName.replace(/\./g,' ').replace(/_/g,' ')}`,
+          wfs: [wfName],
+          runs: 0,
+          isNew: true
         });
       }
     }
   });
 
-  // Log to GitHub
+  // ── Log to GitHub ──
   if(GH.token){
     const body = [
-      `workflow: ${tmpl.name}`,
-      `type: ${currentWF}`,
-      `steps: ${steps.length}`,
-      `tools: ${toolIds.join(', ')}`,
+      `workflow: ${wfName}`,
+      `type: ${currentWF||'custom'}`,
+      `steps: ${builtSteps.length}`,
+      `tools: ${allToolIds.join(', ')}`,
+      `ai_generated: ${isAIGenerated}`,
       `session: ${SESSION_ID}`,
       `deployed_at: ${new Date().toISOString()}`
     ].join('\n');
-    GH.createIssue(`[WEAVER] WORKFLOW_DEPLOYED — ${tmpl.name}`, body, ['weaver-workflow', 'deployed', SESSION_ID])
+    GH.createIssue(`[WEAVER] WORKFLOW_DEPLOYED — ${wfName}`, body, ['weaver-workflow', 'deployed'])
       .catch(()=>{});
   }
+
+  // Reset parsed state
+  window._parsedWorkflow = null;
+  window._lastBuiltSteps = null;
+  window._isAIGenerated = false;
 
   builderDone = true;
   goPage('repo');
@@ -1228,7 +1365,7 @@ function renderRepo(){
     if(repoSrch&&!w.name.toLowerCase().includes(repoSrch))return false;
     return true;
   });
-  // Update stats
+  // Update stats dynamically from actual data
   const allWFS2 = [...WFS, ...DRAFT_WFS];
   const liveCount = allWFS2.filter(w=>w.status==='live').length;
   const draftCount = allWFS2.filter(w=>w.status==='draft').length;
@@ -1236,10 +1373,11 @@ function renderRepo(){
   const t=document.getElementById('repoTotal'); if(t) t.textContent=allWFS2.length;
   const l=document.getElementById('repoLive'); if(l) l.textContent=liveCount;
   const d=document.getElementById('repoDraft'); if(d) d.textContent=draftCount;
+  const rr=document.getElementById('repoRuns'); if(rr) rr.textContent=totalRuns;
   const rn=document.getElementById('rsb-all-n'); if(rn) rn.textContent=allWFS2.length;
   const rl=document.getElementById('rsb-live-n'); if(rl) rl.textContent=liveCount;
   const rd=document.getElementById('rsb-draft-n'); if(rd) rd.textContent=draftCount;
-  const ra=document.getElementById('rsb-admin-n'); if(ra) ra.textContent=allWFS2.length;
+  const ra=document.getElementById('rsb-admin-n'); if(ra) ra.textContent=WFS.length;
 
   document.getElementById('wfGrid').innerHTML=f.map(w=>{
     const ib=w.status==='draft'?'wfci-d':w.type==='assign'?'wfci-a':w.type==='return'?'wfci-r':'wfci-x';
@@ -1696,7 +1834,7 @@ function addEmpSidebar(id,label,cls,text,meta){
   list.prepend(el);
 }
 function updateEmpBadge(id,cls,text){const b=document.getElementById('erib-'+id);if(b){b.className=`eri-badge ${cls}`;b.textContent=text;}}
-function empQuick(intent){document.getElementById('empQR').innerHTML='';const labels={repair:'My laptop has an issue',return:'I want to return my laptop',refresh:'I need a laptop refresh',status:'Check my request status'};eAddU(labels[intent]||intent);handleEmpIntent(intent);}
+function empQuick(intent){document.getElementById('empQR').innerHTML='';const labels={repair:'My laptop has an issue',return:'I want to return my laptop',refresh:'I need a laptop refresh',relocate:'I am relocating offices',status:'Check my request status'};eAddU(labels[intent]||intent);handleEmpIntent(intent);}
 async function empSend(){
   const inp=document.getElementById('empInp');
   const v=inp.value.trim();
@@ -1741,6 +1879,14 @@ Return JSON only: {"intent":"repair|return|refresh|status|other","extracted_issu
 }
 async function handleEmpIntent(intent,rawText){
   await sleep(500);
+  if(intent==='relocate'){repairPhase='';eAddA(`Where are you relocating to? Tell us your current and destination office and we'll take care of the rest.`);setEmpQR([{text:'hyd_to_blr',label:'Hyd → Bangalore'},{text:'blr_to_hyd',label:'Blr → Hyderabad'},{text:'hyd_to_mum',label:'Hyd → Mumbai'},{text:'other_relocate',label:'Other'}]);return;}
+  if(['hyd_to_blr','blr_to_hyd','hyd_to_mum','other_relocate'].includes(intent)){
+    const locMap={hyd_to_blr:'Hyderabad → Bangalore',blr_to_hyd:'Bangalore → Hyderabad',hyd_to_mum:'Hyderabad → Mumbai',other_relocate:'Office relocation'};
+    eAddA(`Got it — <strong>${locMap[intent]}</strong>. Raising relocation request...`);
+    await sleep(600);
+    await raiseEmpAuto('relocate',locMap[intent]);
+    return;
+  }
   if(intent==='repair'){repairPhase='awaiting_issue';eAddA(`Sorry to hear that! What's the issue?`);setEmpQR([{text:'screen_cracked',label:'🖥 Screen cracked'},{text:'battery_issue',label:'🔋 Battery issue'},{text:'keyboard_issue',label:'⌨️ Keyboard'},{text:'other_issue',label:'🔩 Other'}]);}
   else if(['screen_cracked','battery_issue','keyboard_issue','other_issue'].includes(intent)){repairPhase='';const m={screen_cracked:'Screen is cracked',battery_issue:'Battery drains fast',keyboard_issue:'Keyboard not working',other_issue:'Other hardware issue'};eAddA(`Got it — <strong>${m[intent]}</strong>. Raising repair request...`);await sleep(700);await raiseEmpRepair(m[intent]);}
   else if(intent==='repair_detail'){repairPhase='';eAddA(`Got it — <strong>${rawText}</strong>. Raising repair request...`);await sleep(700);await raiseEmpRepair(rawText);}
@@ -1779,7 +1925,7 @@ async function raiseEmpAuto(type){
   empRN++;
   const id=empRN;
   const ref=`WVR-${String(id).padStart(4,'0')}`;
-  const label=type==='return'?'Laptop Return':'Laptop Refresh';
+  const label=type==='return'?'Laptop Return':type==='relocate'?'Device Relocation':'Laptop Refresh';
 
   // Add to sidebar and empReqs
   const reqObj = {id,label,status:'auto',ref};
@@ -1807,7 +1953,16 @@ async function raiseEmpAuto(type){
   eAddA(`✓ Done! Here's what you need to do:`);
   await sleep(300);
 
-  if(type==='return'){
+  if(type==='relocate'){
+    eAddNode(`<div class="checklist">
+      <div class="cl-title">📍 Device Relocation — ${ref}</div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Back up all files to OneDrive before the move','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Back up all files to OneDrive before the move</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Hand over your laptop to the Hyderabad DT desk before leaving','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Hand over your laptop to the Hyderabad DT desk before leaving</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Collect your laptop from the Bangalore DT desk on arrival','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Collect your laptop from the Bangalore DT desk on arrival</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Confirm your new workstation is ready with the Bangalore IT team','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Confirm your new workstation is ready with the Bangalore IT team</div></div>
+      <div class="cl-ref">Ref: ${ref}</div>
+    </div>`);
+  } else if(type==='return'){
     eAddNode(`<div class="checklist" id="cl-wrap-${id}">
       <div class="cl-title">↩ Laptop Return — ${ref}</div>
       <div class="cl-item" onclick="tglChecklist(this,'${ref}','Pack the laptop in its original box or sleeve','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Pack the laptop in its original box or sleeve</div></div>
@@ -1918,15 +2073,15 @@ const FREQS=[
     fields:[{id:'empName',label:'Employee Name',val:'Priya Sharma'},{id:'empId',label:'Employee ID',val:'EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager'],val:'Software Engineer'},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai'],val:'Hyderabad'}]},
   {id:'REQ002',name:'Ananya Iyer',type:'repair',label:'🔧 Repair Request',meta:'EMP003 · TAG-00441 · Screen damage',raised:'Raised by: Employee · 25 min ago',status:'pending',
     fields:[{id:'empName',label:'Employee Name',val:'Ananya Iyer'},{id:'empId',label:'Employee ID',val:'EMP003'},{id:'assetTag',label:'Asset Tag',val:'TAG-00441'},{id:'issueDesc',label:'Issue',val:'Screen is cracked'}]},
-  {id:'REQ003',name:'Raj Mehta',type:'return',label:'↩ Laptop Return',meta:'EMP002 · TAG-00391 · Offboarding Jun 15',raised:'Raised by: Manager · 1 hour ago',status:'done',
-    fields:[{id:'empName',label:'Employee Name',val:'Raj Mehta'},{id:'empId',label:'Employee ID',val:'EMP002'},{id:'assetTag',label:'Asset Tag',val:'TAG-00391'}]},
+
   {id:'REQ004',name:'Karan Singh',type:'assign',label:'💻 Laptop Assignment',meta:'EMP004 · Sales Executive · Mumbai',raised:'Raised by: HR · New joiner Jun 05',status:'done',
     fields:[{id:'empName',label:'Employee Name',val:'Karan Singh'},{id:'empId',label:'Employee ID',val:'EMP004'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager'],val:'Sales Executive'},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai'],val:'Mumbai'}]}
 ];
 const FSTEPS={
   assign:[{n:'Validate employee & entitlement'},{n:'Check asset inventory'},{n:'Assign asset & update status'},{n:'Update CMDB & hostname'},{n:'AI software suggestion'},{n:'Generate confirmation'}],
   repair:[{n:'Validate employee & asset'},{n:'Assess repair urgency'},{n:'Check loaner availability'},{n:'Assign loaner & flag repair'},{n:'Generate confirmation'}],
-  return:[{n:'Validate employee & asset'},{n:'Check return eligibility'},{n:'Clear assignment & update status'},{n:'Flag for wiping & inspection'},{n:'Generate return confirmation'}]
+  return:[{n:'Validate employee & asset'},{n:'Check return eligibility'},{n:'Clear assignment & update status'},{n:'Flag for wiping & inspection'},{n:'Generate return confirmation'}],
+
 };
 let qFilterVal='all',activeFreq=null,fIssueN=9,pendingFulfillerEvent=null;
 
@@ -2005,7 +2160,10 @@ function fSubmitNewRequest(){
 
 function renderQueue(){
   const list=document.getElementById('queueList');if(!list)return;
+  // Only show workflows that need Fulfiller involvement (assign + repair)
+  const fulfillerTypes = ['assign','repair'];
   const filtered=FREQS.filter(r=>{
+    if(!fulfillerTypes.includes(r.type)) return false; // auto-run WFs never show
     if(qFilterVal==='pending')return r.status==='pending';
     if(qFilterVal==='done')return r.status==='done';
     return true;
@@ -2253,6 +2411,8 @@ function startResize(e, panelId, key){
 
 renderRepo();
 renderLibrary();
+// Ensure counts start at 0
+updateLibStats();
 </script>
 </body>
 </html>
