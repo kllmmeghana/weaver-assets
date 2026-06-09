@@ -903,6 +903,10 @@ const WFICONS={
 };
 const TC={fly:'var(--purple)',ai:'var(--amber)',gh:'var(--blue)'};
 let currentRole='admin',repoFilter='all',repoSrch='',libFilters={type:null,op:null,wf:null},libSrch='',issueN=9,empReqs=[],empRN=0,repairPhase='',builderDone=false,weaverTriggered=false;
+// ── SESSION ID ── unique per browser session
+const SESSION_ID = 'S' + Date.now().toString(36).toUpperCase();
+const EMPLOYEE_NAME = 'Priya Sharma'; // filter issues by this name
+
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── NAV ──
@@ -1197,10 +1201,18 @@ async function preloadSidebar(){
     // Fetch ALL issues (open = active, closed = acknowledged)
     const openIssues = await GH.getIssues('weaver-event', 'open');
     const closedIssues = await GH.getIssues('weaver-event', 'closed');
-    // Combine but deduplicate
+    // Combine, deduplicate, filter by session AND employee name
     const seen = new Set();
     const allIssues = [...(Array.isArray(openIssues)?openIssues:[]), ...(Array.isArray(closedIssues)?closedIssues:[])]
-      .filter(i=>{ if(seen.has(i.number)) return false; seen.add(i.number); return true; });
+      .filter(i=>{
+        if(!i || seen.has(i.number)) return false;
+        seen.add(i.number);
+        const body = i.body || '';
+        // Only show issues for this session AND this employee
+        const isThisSession = body.includes(`session: ${SESSION_ID}`);
+        const isThisEmployee = body.includes(`name: ${EMPLOYEE_NAME}`);
+        return isThisSession && isThisEmployee;
+      });
 
     list.innerHTML = '';
     empReqs = []; empRN = 0;
@@ -1423,7 +1435,7 @@ async function raiseEmpRepair(issue){
   updateEmpBadge(id,'erb-prog','WITH TEAM');
   // Log to GitHub + notify Fulfiller (non-blocking)
   if(GH.token){
-    const ghBody = `name: Priya Sharma\nasset: TAG-00581\ntype: REPAIR\nref: ${ref}\nissue: ${issue}\nempId: EMP001\ntimestamp: ${new Date().toISOString()}`;
+    const ghBody = `name: Priya Sharma\nasset: TAG-00581\ntype: REPAIR\nref: ${ref}\nissue: ${issue}\nempId: EMP001\nsession: ${SESSION_ID}\ntimestamp: ${new Date().toISOString()}`;
     GH.createIssue(`[WEAVER] REPAIR_REQUEST — Priya Sharma`, ghBody, ['weaver-event', 'weaver-request', 'repair_request']).catch(()=>{});
   }
   // Notify Fulfiller queue
@@ -1463,7 +1475,7 @@ async function raiseEmpAuto(type){
   await sleep(300);
 
   if(type==='return'){
-    eAddNode(`<div class="checklist">
+    eAddNode(`<div class="checklist" id="cl-wrap-${id}">
       <div class="cl-title">↩ Laptop Return — ${ref}</div>
       <div class="cl-item" onclick="tglChecklist(this,'${ref}','Pack the laptop in its original box or sleeve','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Pack the laptop in its original box or sleeve</div></div>
       <div class="cl-item" onclick="tglChecklist(this,'${ref}','Drop it at the Hyderabad DT desk','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Drop it at the Hyderabad DT desk</div></div>
@@ -1491,7 +1503,7 @@ async function raiseEmpAuto(type){
 asset: TAG-00581
 type: ${type.toUpperCase()}
 ref: ${ref}
-raised_by: Employee
+raised_by: Employee\nsession: ${SESSION_ID}
 timestamp: ${new Date().toISOString()}`;
     const eventLabel = type==='return'?'return_processed':'refresh_processed';
     GH.createIssue(`[WEAVER] ${type==='return'?'RETURN_PROCESSED':'REFRESH_PROCESSED'} — Priya Sharma`, ghBody, ['weaver-event', eventLabel])
@@ -1507,7 +1519,8 @@ timestamp: ${new Date().toISOString()}`;
 function tglChecklist(el, ref, task, reqId){
   el.classList.toggle('chk');
   const checked = el.classList.contains('chk');
-  // Post comment to GitHub issue if we have the issue number
+
+  // Post comment to GitHub
   if(GH.token){
     const req = empReqs.find(r=>String(r.id)===String(reqId));
     const issueNum = req && req.ghIssueNumber;
@@ -1516,6 +1529,32 @@ function tglChecklist(el, ref, task, reqId){
         ? `✅ **Checklist item completed** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`
         : `↩ **Checklist item unchecked** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`;
       GH.addComment(issueNum, comment).catch(()=>{});
+    }
+  }
+
+  // Check if ALL items in this checklist are done
+  const wrap = el.closest('.checklist');
+  if(!wrap) return;
+  const allItems = wrap.querySelectorAll('.cl-item');
+  const allChecked = Array.from(allItems).every(i=>i.classList.contains('chk'));
+  if(allChecked && !wrap.querySelector('.cl-done-msg')){
+    // All done — show completion message and close issue
+    const doneMsg = document.createElement('div');
+    doneMsg.className = 'cl-done-msg';
+    doneMsg.style.cssText = 'margin-top:8px;padding:6px 8px;background:rgba(61,255,160,0.1);border:1px solid var(--green-dim);border-radius:5px;font-size:11px;color:var(--green);text-align:center;';
+    doneMsg.textContent = '✓ All done! Request closed.';
+    wrap.appendChild(doneMsg);
+    // Update sidebar
+    const req = empReqs.find(r=>String(r.id)===String(reqId));
+    if(req){
+      req.status='closed';
+      updateEmpBadge(req.id,'erb-closed','CLOSED');
+      // Close GitHub issue
+      if(GH.token && req.ghIssueNumber){
+        GH.addComment(req.ghIssueNumber, `✅ **All checklist items completed** by Priya Sharma\n\nRequest closed.\n\nRef: ${ref}`)
+          .then(()=>GH.closeIssue(req.ghIssueNumber).catch(()=>{}))
+          .catch(()=>{});
+      }
     }
   }
 }
@@ -1766,6 +1805,7 @@ async function fApprove(id,type,name,asset){
     `model: MacBook Pro 14 M3`,
     `loaner: TAG-00600 (MacBook Air M2)`,
     `raised_by: Fulfiller`,
+    `session: ${SESSION_ID}`,
     `timestamp: ${new Date().toISOString()}`
   ].join('\n');
 
