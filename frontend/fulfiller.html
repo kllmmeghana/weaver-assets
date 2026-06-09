@@ -1189,24 +1189,24 @@ async function preloadSidebar(){
   list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">Loading requests...</div>';
 
   if(!GH.token){
-    // No token — show default pending laptop assignment
-    _addDefaultPendingTask();
+    list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">Enter GitHub token to load requests</div>';
     return;
   }
 
   try {
-    // Fetch ALL open issues (employee's active requests)
-    const openIssues = await GH.getIssues('weaver-request');
-    // Also fetch open weaver-event issues (assigned but not yet acknowledged)
-    const eventIssues = await GH.getIssues('weaver-event');
-    const allIssues = [...(Array.isArray(openIssues)?openIssues:[]), ...(Array.isArray(eventIssues)?eventIssues:[])];
+    // Fetch ALL issues (open = active, closed = acknowledged)
+    const openIssues = await GH.getIssues('weaver-event', 'open');
+    const closedIssues = await GH.getIssues('weaver-event', 'closed');
+    // Combine but deduplicate
+    const seen = new Set();
+    const allIssues = [...(Array.isArray(openIssues)?openIssues:[]), ...(Array.isArray(closedIssues)?closedIssues:[])]
+      .filter(i=>{ if(seen.has(i.number)) return false; seen.add(i.number); return true; });
 
     list.innerHTML = '';
     empReqs = []; empRN = 0;
 
     if(allIssues.length === 0){
-      // No issues in GitHub — show default pending laptop assignment
-      _addDefaultPendingTask();
+      list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>';
       return;
     }
 
@@ -1259,11 +1259,11 @@ async function preloadSidebar(){
       list.appendChild(el);
     });
 
-    if(empReqs.length === 0) _addDefaultPendingTask();
+    if(empReqs.length === 0) list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>';
 
   } catch(e){
     console.error('GitHub load failed:', e);
-    _addDefaultPendingTask();
+    list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>';
   }
 }
 
@@ -1383,9 +1383,22 @@ function eAddU(t){const m=document.getElementById('empMsgs');m.innerHTML+=`<div 
 function eAddNode(html){const m=document.getElementById('empMsgs');m.innerHTML+=`<div class="ema">${html}</div>`;m.scrollTop=9999;}
 function setEmpQR(btns){const def=[{text:'repair',label:'🔧 Repair'},{text:'return',label:'↩ Return'},{text:'refresh',label:'🔄 Refresh'},{text:'status',label:'📋 Status'}];document.getElementById('empQR').innerHTML=(btns||def).map(b=>`<button class="eqb" onclick="empQuick('${b.text}')">${b.label}</button>`).join('');}
 function addEmpSidebar(id,label,cls,text,meta){
-  const r = {id,label,status:'pending',badgeClass:cls,badgeText:text,meta:meta||'Just now'};
-  if(!empReqs.find(x=>x.id===id)) empReqs.push(r);
-  renderEmpSidebarItem(r);
+  const list = document.getElementById('empReqList');
+  if(!list) return;
+  // Remove empty state
+  const empty = list.querySelector('[style]'); if(empty && empty.textContent.includes('No requests')) empty.remove();
+  // Remove existing if present
+  document.getElementById('eri-'+id)?.remove();
+  const el = document.createElement('div');
+  el.className = 'eri';
+  el.id = 'eri-'+id;
+  el.onclick = ()=>openEmpRequest(id);
+  el.innerHTML = `<div class="eri-top">
+    <span class="eri-name">${label}</span>
+    <span class="eri-badge ${cls}" id="erib-${id}">${text}</span>
+  </div>
+  <div class="eri-time">${meta||'Just now'}</div>`;
+  list.prepend(el);
 }
 function updateEmpBadge(id,cls,text){const b=document.getElementById('erib-'+id);if(b){b.className=`eri-badge ${cls}`;b.textContent=text;}}
 function empQuick(intent){document.getElementById('empQR').innerHTML='';const labels={repair:'My laptop has an issue',return:'I want to return my laptop',refresh:'I need a laptop refresh',status:'Check my request status'};eAddU(labels[intent]||intent);handleEmpIntent(intent);}
@@ -1411,7 +1424,7 @@ async function raiseEmpRepair(issue){
   // Log to GitHub + notify Fulfiller (non-blocking)
   if(GH.token){
     const ghBody = `name: Priya Sharma\nasset: TAG-00581\ntype: REPAIR\nref: ${ref}\nissue: ${issue}\nempId: EMP001\ntimestamp: ${new Date().toISOString()}`;
-    GH.createIssue(`[WEAVER] REPAIR_REQUEST — Priya Sharma`, ghBody, ['weaver-request', 'repair_request']).catch(()=>{});
+    GH.createIssue(`[WEAVER] REPAIR_REQUEST — Priya Sharma`, ghBody, ['weaver-event', 'weaver-request', 'repair_request']).catch(()=>{});
   }
   // Notify Fulfiller queue
   WeaverEvents.emit('new_repair_request',{name:'Priya Sharma',empId:'EMP001',asset:'TAG-00581',issue:issue,ref});
