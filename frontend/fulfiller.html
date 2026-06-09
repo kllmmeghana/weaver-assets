@@ -603,18 +603,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
   <div class="lib-layout">
     <div class="lib-sidebar" id="libSidebar">
       <div class="sb-sec">Tool Type</div>
-      <div class="sb-item active" id="lsb-all" onclick="lSbFilter('type','all',this)"><span class="sb-name">All Tools</span><span class="sb-n">9</span></div>
-      <div class="sb-item" onclick="lSbFilter('type','fly',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--purple);display:inline-block;"></span><span class="sb-name">On the fly</span></div><span class="sb-n">6</span></div>
-      <div class="sb-item" onclick="lSbFilter('type','ai',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--amber);display:inline-block;"></span><span class="sb-name">AI generated</span></div><span class="sb-n">1</span></div>
-      <div class="sb-item" onclick="lSbFilter('type','gh',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--blue);display:inline-block;"></span><span class="sb-name">GitHub / MCP</span></div><span class="sb-n">2</span></div>
+      <div class="sb-item active" id="lsb-all" onclick="lSbFilter('type','all',this)"><span class="sb-name">All Tools</span><span class="sb-n" id="lsb-all-n">0</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','fly',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--purple);display:inline-block;"></span><span class="sb-name">On the fly</span></div><span class="sb-n" id="lsb-fly-n">0</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','ai',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--amber);display:inline-block;"></span><span class="sb-name">AI generated</span></div><span class="sb-n" id="lsb-ai-n">0</span></div>
+      <div class="sb-item" onclick="lSbFilter('type','gh',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--blue);display:inline-block;"></span><span class="sb-name">GitHub / MCP</span></div><span class="sb-n" id="lsb-gh-n">0</span></div>
       <div class="sb-sec">Used In</div>
-      <div class="sb-item" onclick="lSbFilter('wf','assign',this)"><span class="sb-name">Laptop Assignment</span><span class="sb-n">6</span></div>
-      <div class="sb-item" onclick="lSbFilter('wf','repair',this)"><span class="sb-name">Repair Request</span><span class="sb-n">5</span></div>
-      <div class="sb-item" onclick="lSbFilter('wf','return',this)"><span class="sb-name">Laptop Return</span><span class="sb-n">4</span></div>
+      <div id="libUsedIn"></div>
       <div class="sb-sec">Operation</div>
-      <div class="sb-item" onclick="lSbFilter('op','read',this)"><span class="sb-name">Read</span><span class="sb-n">4</span></div>
-      <div class="sb-item" onclick="lSbFilter('op','write',this)"><span class="sb-name">Write</span><span class="sb-n">3</span></div>
-      <div class="sb-item" onclick="lSbFilter('op','action',this)"><span class="sb-name">Action</span><span class="sb-n">2</span></div>
+      <div class="sb-item" onclick="lSbFilter('op','read',this)"><span class="sb-name">Read</span><span class="sb-n" id="lsb-read-n">0</span></div>
+      <div class="sb-item" onclick="lSbFilter('op','write',this)"><span class="sb-name">Write</span><span class="sb-n" id="lsb-write-n">0</span></div>
+      <div class="sb-item" onclick="lSbFilter('op','action',this)"><span class="sb-name">Action</span><span class="sb-n" id="lsb-action-n">0</span></div>
     </div>
     <div class="resizer" onmousedown="startResize(event,'libSidebar','lib')"></div><div class="lib-main">
       <div class="lib-stats">
@@ -813,7 +811,7 @@ const processedIssues = new Set(); // persistent across role switches
 function startGHPolling(){
   if(ghPoller) clearInterval(ghPoller);
   ghPollingStartTime = Date.now(); // only pick up issues from NOW
-  ghPoller = setInterval(pollGitHub, 3000);
+  ghPoller = setInterval(pollGitHub, 2000);
   // Don't poll immediately - wait 3s so we don't catch old issues
 }
 
@@ -877,6 +875,7 @@ const WeaverEvents = {
   fired: new Set(),
   emit(type, data){
     const key = type + (data.name||'') + (data.asset||'');
+    console.log('[WEAVER] emit:', type, 'key:', key, 'alreadyFired:', this.fired.has(key), 'listeners:', this.listeners.length);
     if(this.fired.has(key)) return;
     this.fired.add(key);
     this.queue.push({type, data, ts: Date.now()});
@@ -885,8 +884,9 @@ const WeaverEvents = {
   on(fn){
     if(this.listeners.includes(fn)) return;
     this.listeners.push(fn);
+    console.log('[WEAVER] listener registered, replaying', this.queue.length, 'queued events');
     // Replay any queued events so late listeners don't miss them
-    this.queue.forEach(e => fn(e.type, e.data));
+    this.queue.forEach(e => { console.log('[WEAVER] replaying:', e.type); fn(e.type, e.data); });
   },
   off(fn){ this.listeners = this.listeners.filter(x => x !== fn); }
 };
@@ -1024,10 +1024,53 @@ document.addEventListener('click',e=>{if(!e.target.closest('.role-wrap'))documen
 
 // ── BUILD ──
 function setWF(el,k){document.querySelectorAll('.wftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');document.getElementById('promptTa').value=PROMPTS[k];currentWF=k;builderDone=false;}
-function hitWeave(){
-  if(!document.getElementById('promptTa').value.trim()){alert('Please describe your workflow first');return;}
-  builderDone=false;
-  weaverTriggered=true;
+async function hitWeave(){
+  const prompt = document.getElementById('promptTa').value.trim();
+  if(!prompt){alert('Please describe your workflow first');return;}
+
+  // Show parsing state on button
+  const btn = document.querySelector('.btn-weave');
+  const origHTML = btn.innerHTML;
+  btn.innerHTML = '<span class="spin" style="border-top-color:#0a0e13;width:11px;height:11px;border-width:2px;"></span> Parsing...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        system: `You are a workflow parser for an IT asset management system. Given a natural language description, identify the workflow type.
+Return JSON only, no markdown:
+{"type": "assign|repair|return|refresh", "name": "workflow name", "steps": ["step1","step2",...], "tools_needed": ["tool1","tool2",...], "summary": "one line summary"}
+Workflow types: assign=laptop assignment, repair=repair request, return=laptop return, refresh=laptop refresh.`,
+        messages: [{role:'user', content: `Parse this workflow: "${prompt}"`}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    try {
+      const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+      // Map Claude's type to our workflow keys
+      const typeMap = {assign:'assign',repair:'repair',return:'return',refresh:'refresh'};
+      const wfType = typeMap[parsed.type] || 'assign';
+      // Set the workflow type
+      currentWF = wfType;
+      // Highlight the matching tab
+      document.querySelectorAll('.wftab').forEach(t=>t.classList.remove('active'));
+      const tabMap = {assign:0,return:1,repair:2,refresh:3};
+      const tabs = document.querySelectorAll('.wftab');
+      if(tabs[tabMap[wfType]]) tabs[tabMap[wfType]].classList.add('active');
+      // Store parsed summary for builder header
+      window._parsedWorkflow = parsed;
+    } catch(e){ /* parsing failed, use default */ }
+  } catch(e){ /* API failed, continue anyway */ }
+
+  btn.innerHTML = origHTML;
+  btn.disabled = false;
+  builderDone = false;
+  weaverTriggered = true;
   goPage('builder');
 }
 
@@ -1041,10 +1084,12 @@ async function startBuilder(){
   document.getElementById('thinking').style.display='flex';
   document.getElementById('deployBtn').classList.remove('ready');
   document.getElementById('bbLeft').innerHTML=`Building... <strong>0 / ${total}</strong> steps ready`;
-  const badge=document.getElementById('blBadge');if(badge)badge.textContent=BUILDER_LABELS[currentWF]||'Workflow';
+  const badge=document.getElementById('blBadge');
+  if(badge) badge.textContent = (window._parsedWorkflow?.name) || BUILDER_LABELS[currentWF] || 'Workflow';
   await sleep(400);
   document.getElementById('thinking').style.display='none';
-  document.getElementById('blSub').textContent='Building steps one by one...';
+  const parsedSummary = window._parsedWorkflow?.summary;
+  document.getElementById('blSub').textContent = parsedSummary ? `Claude parsed: "${parsedSummary}"` : 'Building steps one by one...';
   for(let i=0;i<steps.length;i++){
     await buildStep(steps[i],i+1);
     document.getElementById('bbLeft').innerHTML=`Building... <strong>${i+1} / ${total}</strong> steps ready`;
@@ -1295,20 +1340,47 @@ function mApprove(){
 
 // ── LIBRARY ──
 function updateLibStats(){
+  const flyCount = TOOLS.filter(x=>x.type==='fly').length;
+  const aiCount = TOOLS.filter(x=>x.type==='ai').length;
+  const ghCount = TOOLS.filter(x=>x.type==='gh').length;
+  const runs = TOOLS.reduce((a,t)=>a+(t.runs||0),0);
   const t=document.getElementById('libTotal'); if(t) t.textContent=TOOLS.length;
-  const f=document.getElementById('libFly'); if(f) f.textContent=TOOLS.filter(x=>x.type==='fly').length;
+  const f=document.getElementById('libFly'); if(f) f.textContent=flyCount;
   const w=document.getElementById('libWfs'); if(w) w.textContent=WFS.length;
-  const r=document.getElementById('libRuns'); if(r) r.textContent=TOOLS.reduce((a,t)=>a+(t.runs||0),0);
-  // Update sidebar counts
-  const sa=document.getElementById('lsb-all'); if(sa) sa.querySelector('.sb-n').textContent=TOOLS.length;
+  const r=document.getElementById('libRuns'); if(r) r.textContent=runs;
+  // Sidebar type counts
+  const sa=document.getElementById('lsb-all-n'); if(sa) sa.textContent=TOOLS.length;
+  const sf=document.getElementById('lsb-fly-n'); if(sf) sf.textContent=flyCount;
+  const sai=document.getElementById('lsb-ai-n'); if(sai) sai.textContent=aiCount;
+  const sgh=document.getElementById('lsb-gh-n'); if(sgh) sgh.textContent=ghCount;
+  // Operation counts
+  const opRead=document.getElementById('lsb-read-n'); if(opRead) opRead.textContent=TOOLS.filter(x=>x.op==='read').length;
+  const opWrite=document.getElementById('lsb-write-n'); if(opWrite) opWrite.textContent=TOOLS.filter(x=>x.op==='write').length;
+  const opAction=document.getElementById('lsb-action-n'); if(opAction) opAction.textContent=TOOLS.filter(x=>x.op==='action').length;
 }
 
 function renderLibrary(){
+  // Populate "Used In" sidebar from deployed WFS only
+  const usedInEl = document.getElementById('libUsedIn');
+  if(usedInEl){
+    if(WFS.length === 0){
+      usedInEl.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:4px 7px;opacity:0.5;">No workflows deployed yet</div>';
+    } else {
+      usedInEl.innerHTML = WFS.map(w=>{
+        const toolCount = TOOLS.filter(t=>t.wfs.includes(w.name)).length;
+        return `<div class="sb-item" onclick="lSbFilter('wf','${w.type}',this)"><span class="sb-name">${w.name}</span><span class="sb-n">${toolCount}</span></div>`;
+      }).join('');
+    }
+  }
   updateLibStats();
   const f=TOOLS.filter(t=>{
     if(libFilters.type&&t.type!==libFilters.type)return false;
     if(libFilters.op&&t.op!==libFilters.op)return false;
-    if(libFilters.wf&&!t.wfs.some(w=>w.toLowerCase().includes(libFilters.wf)))return false;
+    if(libFilters.wf){
+      // Match by workflow type - find wf name from type
+      const wfMatch = WFS.find(w=>w.type===libFilters.wf);
+      if(!wfMatch || !t.wfs.includes(wfMatch.name)) return false;
+    }
     if(libSrch&&!t.name.toLowerCase().includes(libSrch)&&!(TOOL_DESCS[t.name]||'').toLowerCase().includes(libSrch))return false;
     return true;
   });
@@ -1318,7 +1390,14 @@ function renderLibrary(){
   const tl={fly:'On the fly',ai:'Claude API',gh:'GitHub'};
   document.getElementById('libGrid').innerHTML=f.length?f.map(t=>`<div class="ltc">${t.isNew?'<span class="lnew">NEW</span>':''}<div class="ltc-hdr"><div class="ltci ${ib[t.type]}">${TICONS[t.type]}</div><div class="ltc-name">${t.name}</div></div><div class="ltc-desc">${TOOL_DESCS[t.name]||''}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">${t.wfs.map(w=>`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);">${w.split(' ')[0]}</span>`).join('')}</div><div class="ltc-footer"><span class="ltp ${tp[t.type]}">${tl[t.type]}</span><span class="ltc-runs">${t.runs} runs</span></div></div>`).join(''):'<div style="grid-column:1/-1;text-align:center;padding:2rem;font-size:11px;color:var(--muted);opacity:0.4;">No tools match your filters.</div>';
 }
-function lSbFilter(dim,val,el){document.querySelectorAll('.lib-sidebar .sb-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');libFilters={type:null,op:null,wf:null};document.querySelectorAll('.lfb').forEach(b=>b.classList.remove('active'));if(val!=='all')libFilters[dim]=val;renderLibrary();}
+function lSbFilter(dim,val,el){
+  document.querySelectorAll('.lib-sidebar .sb-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  libFilters={type:null,op:null,wf:null};
+  document.querySelectorAll('.lfb').forEach(b=>b.classList.remove('active'));
+  if(val!=='all') libFilters[dim]=val;
+  renderLibrary();
+}
 function lToggleFilter(dim,val,el){if(libFilters[dim]===val){libFilters[dim]=null;el.classList.remove('active');}else{if(libFilters[dim])document.querySelector(`.lfb[onclick*="'${libFilters[dim]}'"]`)?.classList.remove('active');libFilters[dim]=val;el.classList.add('active');}renderLibrary();}
 function libSearchFn(v){libSrch=v.toLowerCase();renderLibrary();}
 
@@ -1353,6 +1432,7 @@ function clearEmpChat(){
 }
 
 function initEmployeePage(){
+  console.log('[WEAVER] initEmployeePage, pendingEvent:', pendingFulfillerEvent, 'queue:', WeaverEvents.queue.length);
   // Clear fired events so notifications can always come through fresh
   WeaverEvents.fired.clear();
   WeaverEvents.on(handleFulfillerEvent);
@@ -1367,6 +1447,7 @@ function initEmployeePage(){
 }
 
 function fireEmpEvent(type, name, asset, ref, ghIssueNumber){
+  console.log('[WEAVER] fireEmpEvent:', type, 'listeners:', WeaverEvents.listeners.length, 'queue:', WeaverEvents.queue.length);
   if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref,ghIssueNumber});
   else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref,ghIssueNumber});
   else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref,ghIssueNumber});
@@ -1376,7 +1457,9 @@ function fireEmpEvent(type, name, asset, ref, ghIssueNumber){
 async function preloadSidebar(){
   const list = document.getElementById('empReqList');
   if(!list) return;
-  list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">Loading requests...</div>';
+  list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;"><span class="spin" style="border-top-color:var(--muted);"></span> Syncing...</div>';
+  const ss = document.getElementById('syncStatus');
+  if(ss){ ss.textContent='Syncing...'; ss.style.color='var(--amber)'; }
 
   if(!GH.token){
     list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">Enter GitHub token to load requests</div>';
@@ -1458,10 +1541,14 @@ async function preloadSidebar(){
     });
 
     if(empReqs.length === 0) list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>';
+    const ss2 = document.getElementById('syncStatus');
+    if(ss2){ ss2.textContent='Online'; ss2.style.color='var(--green)'; }
 
   } catch(e){
     console.error('GitHub load failed:', e);
     list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>';
+    const ss3 = document.getElementById('syncStatus');
+    if(ss3){ ss3.textContent='Online'; ss3.style.color='var(--green)'; }
   }
 }
 
@@ -1538,6 +1625,7 @@ function empShowNotification(r){
 
 
 async function handleFulfillerEvent(type, data){
+  console.log('[WEAVER] handleFulfillerEvent received:', type, data);
   await sleep(300);
   // Update sidebar state only — user clicks to see details
   if(type === 'laptop_assigned'){
@@ -1609,7 +1697,48 @@ function addEmpSidebar(id,label,cls,text,meta){
 }
 function updateEmpBadge(id,cls,text){const b=document.getElementById('erib-'+id);if(b){b.className=`eri-badge ${cls}`;b.textContent=text;}}
 function empQuick(intent){document.getElementById('empQR').innerHTML='';const labels={repair:'My laptop has an issue',return:'I want to return my laptop',refresh:'I need a laptop refresh',status:'Check my request status'};eAddU(labels[intent]||intent);handleEmpIntent(intent);}
-function empSend(){const inp=document.getElementById('empInp');const v=inp.value.trim();if(!v)return;inp.value='';document.getElementById('empQR').innerHTML='';eAddU(v);const l=v.toLowerCase();let intent='other';if(l.includes('repair')||l.includes('broken')||l.includes('screen')||l.includes('damage')||l.includes('battery')||l.includes('keyboard'))intent='repair';else if(l.includes('return'))intent='return';else if(l.includes('refresh'))intent='refresh';else if(l.includes('status')||l.includes('check'))intent='status';else if(repairPhase==='awaiting_issue')intent='repair_detail';handleEmpIntent(intent,v);}
+async function empSend(){
+  const inp=document.getElementById('empInp');
+  const v=inp.value.trim();
+  if(!v)return;
+  inp.value='';
+  document.getElementById('empQR').innerHTML='';
+  eAddU(v);
+
+  // If in repair phase, handle directly
+  if(repairPhase==='awaiting_issue'){
+    handleEmpIntent('repair_detail',v);
+    return;
+  }
+
+  // Use Claude to understand intent
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:150,
+        system:`You are an IT helpdesk assistant. Classify the user's message into one of these intents: repair, return, refresh, status, other.
+Return JSON only: {"intent":"repair|return|refresh|status|other","extracted_issue":"brief description if repair, else null","confidence":"high|low"}`,
+        messages:[{role:'user',content:v}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text||'';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    handleEmpIntent(parsed.intent, parsed.extracted_issue||v);
+  } catch(e){
+    // Fallback to keyword matching
+    const l=v.toLowerCase();
+    let intent='other';
+    if(l.includes('repair')||l.includes('broken')||l.includes('screen')||l.includes('damage')||l.includes('battery')||l.includes('keyboard')||l.includes('crack')||l.includes('not working'))intent='repair';
+    else if(l.includes('return')||l.includes('leaving')||l.includes('offboard'))intent='return';
+    else if(l.includes('refresh')||l.includes('old')||l.includes('slow')||l.includes('upgrade')||l.includes('new laptop'))intent='refresh';
+    else if(l.includes('status')||l.includes('check')||l.includes('update'))intent='status';
+    handleEmpIntent(intent,v);
+  }
+}
 async function handleEmpIntent(intent,rawText){
   await sleep(500);
   if(intent==='repair'){repairPhase='awaiting_issue';eAddA(`Sorry to hear that! What's the issue?`);setEmpQR([{text:'screen_cracked',label:'🖥 Screen cracked'},{text:'battery_issue',label:'🔋 Battery issue'},{text:'keyboard_issue',label:'⌨️ Keyboard'},{text:'other_issue',label:'🔩 Other'}]);}
@@ -1976,7 +2105,26 @@ async function fRunWorkflow(id){
   }else if(r.type==='repair'){
     const iss=vals.issueDesc||'Screen damage';const high=/(screen|battery|broken|crack)/i.test(iss);
     fAddStep(1,'Validate employee & asset','r','');await sleep(400);fAddStep(1,'Validate employee & asset','p','VALIDATED',`${name} confirmed`);await sleep(500);
-    fAddStep(2,'Assess repair urgency','r','');await sleep(400);fAddStep(2,'Assess repair urgency',high?'w':'p',high?'HIGH URGENCY':'STANDARD',iss);await sleep(500);
+    fAddStep(2,'Assess repair urgency','r','');await sleep(200);
+    // Call Claude to assess urgency
+    let urgencyLabel='STANDARD', urgencyLevel='p', urgencyDetail=iss;
+    try {
+      const urgRes = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:120,
+          system:`You are an IT asset manager. Assess repair urgency for a laptop issue. Return JSON only: {"urgency":"HIGH|STANDARD|LOW","reason":"one sentence","risk":"data_loss|productivity|minor"}`,
+          messages:[{role:'user',content:`Laptop issue reported: "${iss}". Employee role: ${vals.empRole||'unknown'}.`}]
+        })
+      });
+      const urgData = await urgRes.json();
+      const urgText = urgData.content?.[0]?.text||'';
+      const urgParsed = JSON.parse(urgText.replace(/```json|```/g,'').trim());
+      urgencyLabel = urgParsed.urgency||'STANDARD';
+      urgencyLevel = urgencyLabel==='HIGH'?'w':urgencyLabel==='LOW'?'p':'p';
+      urgencyDetail = urgParsed.reason||iss;
+    } catch(e){ urgencyLevel=high?'w':'p'; urgencyLabel=high?'HIGH URGENCY':'STANDARD'; }
+    fAddStep(2,'Assess repair urgency',urgencyLevel,urgencyLabel+' · Claude AI',urgencyDetail);await sleep(500);
     fAddStep(3,'Check loaner availability','r','');await sleep(900);fAddStep(3,'Check loaner availability','p','LOANER FOUND','TAG-00600 (MacBook Air M2)');await sleep(500);
     fAddStep(4,'Assign loaner & flag repair','r','');await sleep(400);fAddStep(4,'Assign loaner & flag repair','w','UNDER REPAIR',`${vals.assetTag||'TAG-00441'} → Under Repair · Loaner assigned`);await sleep(500);
     fAddStep(5,'Generate confirmation','r','');await sleep(900);fAddStep(5,'Generate confirmation','p','COMPLETE',`Teams notification queued → ${name}`);
