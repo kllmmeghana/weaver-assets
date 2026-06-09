@@ -699,8 +699,8 @@ const GH = {
     const d = await res.json();
     return d;
   },
-  async getIssues(labels){
-    const q = labels ? `?labels=${labels}&state=closed&per_page=20` : '?state=closed&per_page=20';
+  async getIssues(labels, state='open'){
+    const q = labels ? `?labels=${labels}&state=${state}&per_page=20` : `?state=${state}&per_page=20`;
     const res = await fetch(`${this.base}/repos/${this.repo}/issues${q}`, {
       headers:{'Authorization':`token ${this.token}`}
     });
@@ -744,7 +744,7 @@ let ghPollingStartTime = null;
 async function pollGitHub(){
   if(currentRole !== 'employee') return;
   try {
-    const issues = await GH.getIssues('weaver-event');
+    const issues = await GH.getIssues('weaver-event', 'closed');
     const now = Date.now();
     for(const issue of issues){
       if(processedIssues.has(issue.number)) continue;
@@ -936,7 +936,9 @@ function updateNavTabs(active){
 }
 function toggleDD(){document.getElementById('roleDD').classList.toggle('hidden');}
 function switchRole(r){
-  currentRole=r;document.getElementById('roleDD').classList.add('hidden');
+  currentRole=r;
+  WeaverEvents.fired.clear(); // reset so events aren't blocked on role switch
+  document.getElementById('roleDD').classList.add('hidden');
   const dots={admin:'rd-a',fulfiller:'rd-f',employee:'rd-e'};
   const labels={admin:'Admin',fulfiller:'Fulfiller',employee:'Employee'};
   document.getElementById('roleBtn').innerHTML=`<span class="rdot ${dots[r]}"></span>${labels[r]}<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>`;
@@ -1161,17 +1163,16 @@ function clearEmpChat(){
 }
 
 function initEmployeePage(){
+  // Clear fired events so notifications can always come through fresh
+  WeaverEvents.fired.clear();
   WeaverEvents.on(handleFulfillerEvent);
   startGHPolling();
   preloadSidebar();
-  // Only fire pending event if there's an open/pending task that matches
+  // Fire any pending event from Fulfiller
   if(pendingFulfillerEvent){
     const e = pendingFulfillerEvent;
-    const hasOpenTask = empReqs.some(r => r.status === 'pending' || r.status === 'auto');
-    if(hasOpenTask){
-      pendingFulfillerEvent = null;
-      setTimeout(()=> fireEmpEvent(e.type, e.name, e.asset, e.ref, e.ghIssueNumber), 800);
-    }
+    pendingFulfillerEvent = null;
+    setTimeout(()=> fireEmpEvent(e.type, e.name, e.asset, e.ref, e.ghIssueNumber), 800);
   }
 }
 
@@ -1182,25 +1183,117 @@ function fireEmpEvent(type, name, asset, ref, ghIssueNumber){
   else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref,ghIssueNumber});
 }
 
-function preloadSidebar(){
+async function preloadSidebar(){
   const list = document.getElementById('empReqList');
   if(!list) return;
-  // Clear placeholder
-  list.innerHTML = '';
-  // Show Laptop Assignment as PENDING (raised by HR before Priya joined)
+  list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">Loading requests...</div>';
+
+  if(!GH.token){
+    // No token — show default pending laptop assignment
+    _addDefaultPendingTask();
+    return;
+  }
+
+  try {
+    // Fetch ALL open issues (employee's active requests)
+    const openIssues = await GH.getIssues('weaver-request');
+    // Also fetch open weaver-event issues (assigned but not yet acknowledged)
+    const eventIssues = await GH.getIssues('weaver-event');
+    const allIssues = [...(Array.isArray(openIssues)?openIssues:[]), ...(Array.isArray(eventIssues)?eventIssues:[])];
+
+    list.innerHTML = '';
+    empReqs = []; empRN = 0;
+
+    if(allIssues.length === 0){
+      // No issues in GitHub — show default pending laptop assignment
+      _addDefaultPendingTask();
+      return;
+    }
+
+    // Build sidebar from GitHub issues
+    allIssues.forEach(issue => {
+      if(!issue || !issue.title) return;
+      empRN++;
+      const id = empRN;
+      const title = issue.title || '';
+      const body = issue.body || '';
+      const data = parseIssueBody(body);
+      const isClosed = issue.state === 'closed';
+
+      let label='Request', badgeClass='erb-prog', badgeText='PENDING', status='pending';
+
+      if(title.includes('LAPTOP_ASSIGNED') || title.includes('REPAIR_APPROVED')){
+        label = title.includes('LAPTOP_ASSIGNED') ? 'Laptop Assignment' : 'Repair Request';
+        if(isClosed){ badgeClass='erb-closed'; badgeText='CLOSED'; status='closed'; }
+        else { badgeClass='erb-done'; badgeText='DONE'; status='done'; }
+      } else if(title.includes('REPAIR_REQUEST')){
+        label = 'Repair Request';
+        if(isClosed){ badgeClass='erb-closed'; badgeText='CLOSED'; status='closed'; }
+        else { badgeClass='erb-prog'; badgeText='WITH TEAM'; status='pending'; }
+      } else if(title.includes('RETURN_PROCESSED')){
+        label = 'Laptop Return';
+        if(isClosed){ badgeClass='erb-closed'; badgeText='CLOSED'; status='closed'; }
+        else { badgeClass='erb-done'; badgeText='DONE'; status='done'; }
+      } else if(title.includes('REFRESH_PROCESSED')){
+        label = 'Laptop Refresh';
+        if(isClosed){ badgeClass='erb-closed'; badgeText='CLOSED'; status='closed'; }
+        else { badgeClass='erb-done'; badgeText='DONE'; status='done'; }
+      } else {
+        return; // skip unrecognised issues
+      }
+
+      const req = {id, label, status, badgeClass, badgeText,
+        meta: data.timestamp ? new Date(data.timestamp).toLocaleDateString() : 'Recent',
+        asset: data.asset, ref: data.ref, ghIssueNumber: issue.number};
+      empReqs.push(req);
+
+      const el = document.createElement('div');
+      el.className = 'eri';
+      el.id = 'eri-'+id;
+      el.onclick = ()=>openEmpRequest(id);
+      el.innerHTML = `<div class="eri-top">
+        <span class="eri-name">${label}</span>
+        <span class="eri-badge ${badgeClass}" id="erib-${id}">${badgeText}</span>
+      </div>
+      <div class="eri-time">${req.meta}</div>`;
+      list.appendChild(el);
+    });
+
+    if(empReqs.length === 0) _addDefaultPendingTask();
+
+  } catch(e){
+    console.error('GitHub load failed:', e);
+    _addDefaultPendingTask();
+  }
+}
+
+function _addDefaultPendingTask(){
+  // Fallback — show default pending laptop assignment when no GitHub data
   empRN++;
   const id = empRN;
-  empReqs.push({id, label:'Laptop Assignment', status:'pending'});
-  list.innerHTML = `<div class="eri active" id="eri-${id}">
-    <div class="eri-top">
-      <span class="eri-name">Laptop Assignment</span>
-      <span class="eri-badge erb-prog" id="erib-${id}">PENDING</span>
-    </div>
-    <div class="eri-time">Raised by HR · Today</div>
-  </div>`;
-  const el2=document.getElementById('eri-'+id);
-  if(el2) el2.onclick=()=>openEmpRequest(id);
+  const req = {id, label:'Laptop Assignment', status:'pending', badgeClass:'erb-prog', badgeText:'PENDING',
+    meta:'Raised by HR · Today', ghIssueNumber: null};
+  empReqs.push(req);
+  const list = document.getElementById('empReqList');
+  if(!list) return;
+  list.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'eri';
+  el.id = 'eri-'+id;
+  el.onclick = ()=>openEmpRequest(id);
+  el.innerHTML = `<div class="eri-top">
+    <span class="eri-name">Laptop Assignment</span>
+    <span class="eri-badge erb-prog" id="erib-${id}">PENDING</span>
+  </div>
+  <div class="eri-time">Raised by HR · Today</div>`;
+  list.appendChild(el);
+  // Make it clickable
+  setTimeout(()=>{
+    const el2 = document.getElementById('eri-'+id);
+    if(el2) el2.onclick = ()=>openEmpRequest(id);
+  }, 100);
 }
+
 
 function openEmpRequest(id){
   document.querySelectorAll('.eri').forEach(e=>e.classList.remove('active'));
