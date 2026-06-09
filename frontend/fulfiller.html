@@ -874,16 +874,19 @@ function parseIssueBody(body){
 const WeaverEvents = {
   queue: [],
   listeners: [],
-  fired: new Set(), // prevent duplicate events
+  fired: new Set(),
   emit(type, data){
-    const key = type + (data.ref||'') + (data.asset||'');
-    if(this.fired.has(key)) return; // already fired this exact event
+    const key = type + (data.name||'') + (data.asset||'');
+    if(this.fired.has(key)) return;
     this.fired.add(key);
     this.queue.push({type, data, ts: Date.now()});
     this.listeners.forEach(fn => fn(type, data));
   },
   on(fn){
-    if(!this.listeners.includes(fn)) this.listeners.push(fn); // no duplicate listeners
+    if(this.listeners.includes(fn)) return;
+    this.listeners.push(fn);
+    // Replay any queued events so late listeners don't miss them
+    this.queue.forEach(e => fn(e.type, e.data));
   },
   off(fn){ this.listeners = this.listeners.filter(x => x !== fn); }
 };
@@ -1009,7 +1012,6 @@ function updateNavTabs(active){
 function toggleDD(){document.getElementById('roleDD').classList.toggle('hidden');}
 function switchRole(r){
   currentRole=r;
-  WeaverEvents.fired.clear(); // reset so events aren't blocked on role switch
   document.getElementById('roleDD').classList.add('hidden');
   const dots={admin:'rd-a',fulfiller:'rd-f',employee:'rd-e'};
   const labels={admin:'Admin',fulfiller:'Fulfiller',employee:'Employee'};
@@ -1497,7 +1499,7 @@ function openEmpRequest(id){
   const r = empReqs.find(x=>String(x.id)===String(id));
   if(!r) return;
   document.getElementById('empMsgs').innerHTML='';
-  if(r.status==='pending'){
+  if(r.status==='pending'||r.status==='with_team'||r.badgeText==='WITH TEAM'){
     eAddA("<strong>"+r.label+"</strong> is with the IT team.<br><br>Status: <span style='color:var(--amber);'>⏳ Pending</span><br><br>You'll see a notification here once it's processed. Click back when the badge turns green.");
   } else if(r.status==='done'){
     empShowNotification(r);
@@ -1548,11 +1550,20 @@ async function handleFulfillerEvent(type, data){
     }
   }
   else if(type === 'repair_approved'){
-    const req = empReqs.find(r=>r.label==='Repair Request'&&r.status==='pending');
+    // Match any open repair regardless of exact status string
+    const req = empReqs.find(r=>r.label==='Repair Request' && r.status!=='closed' && r.status!=='done');
     if(req){
-      req.status='done'; req.loaner=data.loaner; req.ref=data.ref; req.ghIssueNumber=data.ghIssueNumber||null;
+      req.status='done'; req.loaner=data.loaner||'TAG-00600 (MacBook Air M2)'; req.ref=data.ref; req.ghIssueNumber=data.ghIssueNumber||null;
       updateEmpBadge(req.id,'erb-done','DONE');
       flashSidebarItem(req.id);
+    } else {
+      // If loaded from GitHub with status 'with_team', update that too
+      const ghReq = empReqs.find(r=>r.label==='Repair Request');
+      if(ghReq){
+        ghReq.status='done'; ghReq.loaner=data.loaner||'TAG-00600 (MacBook Air M2)'; ghReq.ref=data.ref;
+        updateEmpBadge(ghReq.id,'erb-done','DONE');
+        flashSidebarItem(ghReq.id);
+      }
     }
   }
   else if(type === 'return_processed'){
@@ -2040,12 +2051,15 @@ async function fApprove(id,type,name,asset){
 
     // Queue event with issue number — fires when Employee page opens
     pendingFulfillerEvent = {type, name, asset, ref, ghIssueNumber: issue.number||null};
+    // Also emit immediately if Employee page already listening
+    fireEmpEvent(type, name, asset, ref, issue.number||null);
 
   } catch(e){
     const approveMsg2 = document.getElementById('fApproveMsg');
     if(approveMsg2) approveMsg2.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;"><span style="color:var(--green)">✓ Approved — notifying employee.</span></div>`;
     else fAddA(`<span style="color:var(--green)">✓ Approved — notifying employee.</span>`);
     pendingFulfillerEvent = {type, name, asset, ref, ghIssueNumber: null};
+    fireEmpEvent(type, name, asset, ref, null);
   }
 }
 
