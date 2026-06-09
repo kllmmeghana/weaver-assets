@@ -14,7 +14,7 @@
   --text:#e8eef4;--muted:#5a7a8a;--mid:#8aaabb;
   --amber:#ffaa3d;--red:#ff5a5a;--blue:#5ab4ff;--purple:#b47aff;
 }
-body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;font-size:14px;}
 /* NAV */
 .nav{display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;height:48px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
 .logo{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
@@ -392,6 +392,88 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 .rb-ok{background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
 .rb-warn{background:rgba(255,170,61,0.1);color:var(--amber);border:1px solid rgba(255,170,61,0.3);}
 .rs{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;}
+
+/* ── RESPONSIVE / HIGH-RES ── */
+@media (min-width: 1400px) {
+  .nav{height:52px;}
+  .ntab{font-size:13px;padding:0 16px;}
+  .role-btn{font-size:12px;padding:6px 14px;}
+  .build-main{max-width:720px;padding:2rem 2rem 3rem;}
+  .hero-title{font-size:24px;}
+  .hero-sub{font-size:13px;}
+  .prompt-ta{font-size:14px;min-height:180px;}
+  .wftab{font-size:12px;padding:7px 16px;}
+  .stat-val{font-size:20px;}
+  .stat-label{font-size:10px;}
+  .sb-name{font-size:12px;}
+  .sb-n{font-size:10px;}
+  .wfc-name{font-size:13px;}
+  .wfc-desc{font-size:11px;}
+  .wfc-runs{font-size:10px;}
+  .ltc-name{font-size:11px;}
+  .ltc-desc{font-size:11px;}
+  .eba{font-size:13px;}
+  .ebu{font-size:13px;}
+  .eqb{font-size:12px;padding:5px 14px;}
+  .einp{font-size:13px;padding:9px 12px;}
+  .ep-name{font-size:13px;}
+  .ep-role{font-size:11px;}
+  .eri-name{font-size:12px;}
+  .bl-title{font-size:14px;}
+  .step-name{font-size:13px;}
+  .step-desc{font-size:11px;}
+  .tc-name{font-size:12px;}
+  .tc-desc{font-size:11px;}
+  .m-title{font-size:15px;}
+  .mi-sname{font-size:12px;}
+  .mi-stool{font-size:10px;}
+  .esn{font-size:12px;}
+  .sn{font-size:12px;}
+  .wf-badge{font-size:11px;padding:4px 12px;}
+  .btn-weave{font-size:14px;padding:10px 24px;}
+  .btn-deploy{font-size:12px;padding:8px 20px;}
+  .bb-left{font-size:13px;}
+}
+
+@media (min-width: 1800px) {
+  .build-main{max-width:860px;}
+  .hero-title{font-size:28px;}
+  .wfc{padding:1rem;}
+  .wfc-name{font-size:14px;}
+  .stat-val{font-size:22px;}
+}
+
+/* Resizable panels - handled by JS drag */
+.resizer{width:4px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.15s;position:relative;z-index:10;}
+.resizer:hover,.resizer.dragging{background:var(--green);}
+
+/* Better scrollbars */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* Larger modal on big screens */
+@media (min-width: 1400px) {
+  .modal{width:800px;max-height:85vh;}
+  .m-info{width:300px;}
+  .mc-form{width:220px;}
+}
+@media (min-width: 1800px) {
+  .modal{width:960px;}
+  .m-info{width:360px;}
+  .mc-form{width:260px;}
+}
+
+/* Better grid on large screens */
+@media (min-width: 1400px) {
+  .wf-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+  .lib-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+}
+@media (min-width: 1800px) {
+  .wf-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
+  .lib-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));}
+}
 </style>
 </head>
 <body>
@@ -466,7 +548,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 <!-- PAGE 2: BUILDER -->
 <div class="page" id="page-builder" style="flex-direction:column;">
   <div class="builder-layout">
-    <div class="builder-left">
+    <div class="builder-left" id="builderLeft">
       <div class="bl-hdr">
         <div><div class="bl-title">Workflow steps</div><div class="bl-sub" id="blSub">Claude is reading your prompt...</div></div>
         <span class="wf-badge" id="blBadge">Laptop Assignment · 6 steps</span>
@@ -474,7 +556,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
       <div class="thinking" id="thinking"><div class="tdots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div><span style="font-size:11px;color:var(--blue);">Analysing workflow description...</span></div>
       <div id="stepsContainer"></div>
     </div>
-    <div class="builder-right">
+    <div class="resizer" onmousedown="startResize(event,'builderLeft','builder')"></div><div class="builder-right">
       <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Tool Builder</div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:12px;" id="toolBuilderSub">Tools appear here as Claude builds them.</div>
       <div id="toolsContainer"></div>
@@ -492,7 +574,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 <!-- PAGE 3: REPO -->
 <div class="page" id="page-repo">
   <div class="repo-layout">
-    <div class="repo-sidebar">
+    <div class="repo-sidebar" id="repoSidebar">
       <div class="sb-sec">Status</div>
       <div class="sb-item active" id="rsb-all" onclick="rSbFilter('all',this)"><span class="sb-name">All</span><span class="sb-n" id="rsb-all-n">1</span></div>
       <div class="sb-item" id="rsb-live" onclick="rSbFilter('live',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;"></span><span class="sb-name">Live</span></div><span class="sb-n">3</span></div>
@@ -500,7 +582,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
       <div class="sb-sec">Deployed By</div>
       <div class="sb-item"><span class="sb-name">Admin</span><span class="sb-n">4</span></div>
     </div>
-    <div class="repo-main">
+    <div class="resizer" onmousedown="startResize(event,'repoSidebar','repo')"></div><div class="repo-main">
       <div class="repo-stats">
         <div class="stat"><div class="stat-val" id="repoTotal">1</div><div class="stat-label">Workflows</div></div>
         <div class="stat"><div class="stat-val" id="repoLive">0</div><div class="stat-label">Live</div></div>
@@ -519,7 +601,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 <!-- PAGE 4: LIBRARY -->
 <div class="page" id="page-library">
   <div class="lib-layout">
-    <div class="lib-sidebar">
+    <div class="lib-sidebar" id="libSidebar">
       <div class="sb-sec">Tool Type</div>
       <div class="sb-item active" id="lsb-all" onclick="lSbFilter('type','all',this)"><span class="sb-name">All Tools</span><span class="sb-n">9</span></div>
       <div class="sb-item" onclick="lSbFilter('type','fly',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--purple);display:inline-block;"></span><span class="sb-name">On the fly</span></div><span class="sb-n">6</span></div>
@@ -534,7 +616,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
       <div class="sb-item" onclick="lSbFilter('op','write',this)"><span class="sb-name">Write</span><span class="sb-n">3</span></div>
       <div class="sb-item" onclick="lSbFilter('op','action',this)"><span class="sb-name">Action</span><span class="sb-n">2</span></div>
     </div>
-    <div class="lib-main">
+    <div class="resizer" onmousedown="startResize(event,'libSidebar','lib')"></div><div class="lib-main">
       <div class="lib-stats">
         <div class="stat"><div class="stat-val" id="libTotal">0</div><div class="stat-label">Total tools</div></div>
         <div class="stat"><div class="stat-val" id="libFly">0</div><div class="stat-label">Built on the fly</div></div>
@@ -617,7 +699,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 <!-- PAGE 5: EMPLOYEE -->
 <div class="page" id="page-employee">
   <div class="emp-layout">
-    <div class="emp-sidebar">
+    <div class="emp-sidebar" id="empSidebar">
       <div class="ep">
         <div class="ep-av">PS</div>
         <div class="ep-name">Priya Sharma</div>
@@ -629,7 +711,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
         <div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>
       </div>
     </div>
-    <div class="emp-chat">
+    <div class="resizer" onmousedown="startResize(event,'empSidebar','emp')"></div><div class="emp-chat">
       <div class="ech-hdr">
         <div><div class="ech-title">Weaver Assistant</div><div class="ech-sub">Raise a request · Track status · Get notified</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -1538,10 +1620,19 @@ async function raiseEmpRepair(issue){
   // Log to GitHub + notify Fulfiller (non-blocking)
   if(GH.token){
     const ghBody = `name: Priya Sharma\nasset: TAG-00581\ntype: REPAIR\nref: ${ref}\nissue: ${issue}\nempId: EMP001\nsession: ${SESSION_ID}\ntimestamp: ${new Date().toISOString()}`;
-    GH.createIssue(`[WEAVER] REPAIR_REQUEST — Priya Sharma`, ghBody, ['weaver-event', 'weaver-request', 'repair_request']).catch(()=>{});
+    GH.createIssue(`[WEAVER] REPAIR_REQUEST — Priya Sharma`, ghBody, ['weaver-event', 'weaver-request', 'repair_request'])
+      .then(iss=>{
+        if(iss && iss.number){
+          // Store issue number on the request so Fulfiller can comment on it instead of creating new
+          const req = empReqs.find(r=>r.ref===ref);
+          if(req) req.ghIssueNumber = iss.number;
+          // Also store globally for Fulfiller to find
+          window._lastRepairIssueNumber = iss.number;
+        }
+      }).catch(()=>{});
   }
-  // Notify Fulfiller queue
-  WeaverEvents.emit('new_repair_request',{name:'Priya Sharma',empId:'EMP001',asset:'TAG-00581',issue:issue,ref});
+  // Notify Fulfiller queue with issue number
+  WeaverEvents.emit('new_repair_request',{name:'Priya Sharma',empId:'EMP001',asset:'TAG-00581',issue:issue,ref,ghIssueNumber:window._lastRepairIssueNumber||null});
   setEmpQR();
 }
 async function raiseEmpAuto(type){
@@ -1665,7 +1756,20 @@ function showSoftware(){
   const apps=[{e:'💻',n:'VS Code'},{e:'🐳',n:'Docker'},{e:'🔗',n:'GitHub Desktop'},{e:'📮',n:'Postman'},{e:'💬',n:'Slack'},{e:'📹',n:'Zoom'},{e:'🔐',n:'1Password'},{e:'🌐',n:'Chrome'}];
   eAddNode(`<div class="sw-card"><div style="font-size:11px;font-weight:500;margin-bottom:2px;">Software for your laptop</div><div style="font-size:10px;color:var(--muted);margin-bottom:6px;">AI-suggested for Software Engineer. Uncheck anything you don't need.</div><div class="sw-grid">${apps.map((a,i)=>`<div class="swi on" id="swi-${i}" onclick="this.classList.toggle('on')"><span class="swi-ico">${a.e}</span><span class="swi-name">${a.n}</span><div class="swi-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></div>`).join('')}</div><button class="btn-confirm" onclick="confirmSw()">Confirm Selection</button><button class="btn-skip-sw" onclick="skipSw()">Skip — I'll decide later</button></div>`);
 }
-function confirmSw(){const sel=Array.from(document.querySelectorAll('.swi.on')).map(e=>e.querySelector('.swi-name').textContent);document.querySelector('.sw-card')?.remove();eAddA(`✓ <strong>${sel.length} apps</strong> confirmed. The DT team will have these ready. Enjoy your new laptop! 🎉`);setEmpQR();}
+function confirmSw(){
+  const sel=Array.from(document.querySelectorAll('.swi.on')).map(e=>e.querySelector('.swi-name').textContent);
+  document.querySelector('.sw-card')?.remove();
+  eAddA(`✓ <strong>${sel.length} apps</strong> confirmed. The DT team will have these ready. Enjoy your new laptop! 🎉`);
+  // Log software selection to GitHub issue
+  if(GH.token){
+    const req = empReqs.find(r=>r.label==='Laptop Assignment' && r.ghIssueNumber);
+    if(req && req.ghIssueNumber){
+      const comment = `## 💻 Software Selection by Priya Sharma\n\n${sel.map(a=>'- ✅ '+a).join('\n')}\n\n**Total:** ${sel.length} apps confirmed\n**Timestamp:** ${new Date().toISOString()}`;
+      GH.addComment(req.ghIssueNumber, comment).catch(()=>{});
+    }
+  }
+  setEmpQR();
+}
 function skipSw(){document.querySelector('.sw-card')?.remove();eAddA(`No problem — install from the company portal anytime. 🎉`);setEmpQR();}
 
 // ── FULFILLER ──
@@ -1899,23 +2003,34 @@ async function fApprove(id,type,name,asset){
   const eventType = eventMap[type] || type;
   const ref = `WVR-${String(Date.now()).slice(-4)}`;
 
-  const body = [
-    `name: ${name}`,
-    `asset: ${asset}`,
-    `type: ${type}`,
-    `ref: ${ref}`,
-    `model: MacBook Pro 14 M3`,
-    `loaner: TAG-00600 (MacBook Air M2)`,
-    `raised_by: Fulfiller`,
-    `session: ${SESSION_ID}`,
-    `timestamp: ${new Date().toISOString()}`
-  ].join('\n');
-
   try {
-    const issue = await Promise.race([
-      GH.createIssue(`[WEAVER] ${eventType} — ${name}`, body, ['weaver-event', eventType.toLowerCase()]),
-      new Promise((_,reject) => setTimeout(()=>reject(new Error('timeout')), 5000))
-    ]);
+    let issue = null;
+    // For REPAIR — add comment to existing Employee issue instead of creating new
+    if(type === 'REPAIR' && window._lastRepairIssueNumber){
+      const commentBody = `## ✅ Repair Approved by Fulfiller\n\n**Loaner assigned:** TAG-00600 (MacBook Air M2)\n**Original device:** ${asset} → Under Repair\n**Ref:** ${ref}\n**Timestamp:** ${new Date().toISOString()}`;
+      await Promise.race([
+        GH.addComment(window._lastRepairIssueNumber, commentBody),
+        new Promise((_,reject) => setTimeout(()=>reject(new Error('timeout')), 5000))
+      ]);
+      issue = {number: window._lastRepairIssueNumber};
+    } else {
+      // For all other types — create new issue
+      const body = [
+        `name: ${name}`,
+        `asset: ${asset}`,
+        `type: ${type}`,
+        `ref: ${ref}`,
+        `model: MacBook Pro 14 M3`,
+        `loaner: TAG-00600 (MacBook Air M2)`,
+        `raised_by: Fulfiller`,
+        `session: ${SESSION_ID}`,
+        `timestamp: ${new Date().toISOString()}`
+      ].join('\n');
+      issue = await Promise.race([
+        GH.createIssue(`[WEAVER] ${eventType} — ${name}`, body, ['weaver-event', eventType.toLowerCase()]),
+        new Promise((_,reject) => setTimeout(()=>reject(new Error('timeout')), 5000))
+      ]);
+    }
     const url = issue.html_url || `https://github.com/kllmmeghana/weaver-assets/issues`;
     const num = issue.number || '?';
     // Leave issue OPEN — will be closed when Employee acknowledges
@@ -1944,6 +2059,34 @@ function fSendChat(){
     else if(l.includes('ananya'))selectFreq('REQ002');
     else fAddA(`Select a request from the queue to process it.`);
   },400);
+}
+
+// ── DRAG RESIZE ──
+const RESIZE_MINS = {builder:280, repo:130, lib:130, emp:150};
+const RESIZE_MAXS = {builder:600, repo:280, lib:280, emp:320};
+
+function startResize(e, panelId, key){
+  e.preventDefault();
+  const panel = document.getElementById(panelId);
+  if(!panel) return;
+  const resizer = e.target;
+  resizer.classList.add('dragging');
+  const startX = e.clientX;
+  const startW = panel.getBoundingClientRect().width;
+
+  function onMove(e){
+    const dx = e.clientX - startX;
+    const newW = Math.min(RESIZE_MAXS[key], Math.max(RESIZE_MINS[key], startW + dx));
+    panel.style.width = newW + 'px';
+    panel.style.flexShrink = '0';
+  }
+  function onUp(){
+    resizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 renderRepo();
