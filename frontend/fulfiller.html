@@ -484,7 +484,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
     <div class="bb-left" id="bbLeft">Building... <strong>0 / 6</strong> steps ready</div>
     <div style="display:flex;gap:8px;">
       <button class="btn-back" onclick="goPage('build')">← Back</button>
-      <button class="btn-deploy" id="deployBtn" onclick="goPage('repo')">Deploy → Repository</button>
+      <button class="btn-deploy" id="deployBtn" onclick="deployWorkflow()">Deploy → Repository</button>
     </div>
   </div>
 </div>
@@ -494,7 +494,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
   <div class="repo-layout">
     <div class="repo-sidebar">
       <div class="sb-sec">Status</div>
-      <div class="sb-item active" id="rsb-all" onclick="rSbFilter('all',this)"><span class="sb-name">All</span><span class="sb-n">4</span></div>
+      <div class="sb-item active" id="rsb-all" onclick="rSbFilter('all',this)"><span class="sb-name">All</span><span class="sb-n" id="rsb-all-n">1</span></div>
       <div class="sb-item" id="rsb-live" onclick="rSbFilter('live',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;"></span><span class="sb-name">Live</span></div><span class="sb-n">3</span></div>
       <div class="sb-item" id="rsb-draft" onclick="rSbFilter('draft',this)"><div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:var(--muted);display:inline-block;"></span><span class="sb-name">Draft</span></div><span class="sb-n">1</span></div>
       <div class="sb-sec">Deployed By</div>
@@ -502,10 +502,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
     </div>
     <div class="repo-main">
       <div class="repo-stats">
-        <div class="stat"><div class="stat-val">4</div><div class="stat-label">Workflows</div></div>
-        <div class="stat"><div class="stat-val">3</div><div class="stat-label">Live</div></div>
-        <div class="stat"><div class="stat-val">1</div><div class="stat-label">Draft</div></div>
-        <div class="stat"><div class="stat-val" id="repoRuns">24</div><div class="stat-label">Total runs</div></div>
+        <div class="stat"><div class="stat-val" id="repoTotal">1</div><div class="stat-label">Workflows</div></div>
+        <div class="stat"><div class="stat-val" id="repoLive">0</div><div class="stat-label">Live</div></div>
+        <div class="stat"><div class="stat-val" id="repoDraft">1</div><div class="stat-label">Draft</div></div>
+        <div class="stat"><div class="stat-val" id="repoRuns">0</div><div class="stat-label">Total runs</div></div>
       </div>
       <div class="repo-toolbar">
         <input class="rsearch" placeholder="Search..." oninput="repoSearchFn(this.value)"/>
@@ -536,10 +536,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
     </div>
     <div class="lib-main">
       <div class="lib-stats">
-        <div class="stat"><div class="stat-val">9</div><div class="stat-label">Total tools</div></div>
-        <div class="stat"><div class="stat-val">6</div><div class="stat-label">Built on the fly</div></div>
-        <div class="stat"><div class="stat-val">3</div><div class="stat-label">Workflows</div></div>
-        <div class="stat"><div class="stat-val">24</div><div class="stat-label">Total runs</div></div>
+        <div class="stat"><div class="stat-val" id="libTotal">0</div><div class="stat-label">Total tools</div></div>
+        <div class="stat"><div class="stat-val" id="libFly">0</div><div class="stat-label">Built on the fly</div></div>
+        <div class="stat"><div class="stat-val" id="libWfs">0</div><div class="stat-label">Workflows</div></div>
+        <div class="stat"><div class="stat-val" id="libRuns">0</div><div class="stat-label">Total runs</div></div>
       </div>
       <div class="lib-toolbar">
         <input class="lsearch" placeholder="Search tools..." oninput="libSearchFn(this.value)"/>
@@ -865,31 +865,17 @@ const TOOL_DESCS={
   'github.update_asset':'Commits updated assets.json via GitHub Contents API.',
   'github.create_issue':'Creates GitHub issue as audit trail.'
 };
-const WFS=[
-  {id:'assign',name:'Laptop Assignment',type:'assign',status:'live',desc:'Validates entitlement, checks inventory, assigns asset, updates CMDB, AI software suggestion, confirmation.',steps:6,tools:['fly','fly','fly','fly','ai','gh'],runs:10,isNew:true,
-    stepsArr:[{name:'Validate employee & entitlement',tool:'employees.check · entitlement.get_tier'},{name:'Check asset inventory',tool:'assets.inventory_check'},{name:'Assign asset & update status',tool:'assets.assign'},{name:'Update CMDB & hostname',tool:'github.update_asset'},{name:'AI software suggestion',tool:'ai.suggest_software'},{name:'Generate confirmation',tool:'github.create_issue'}],
-    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Priya Sharma'},{id:'empId',label:'Employee ID',ph:'e.g. EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager']},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai']}]},
-  {id:'repair',name:'Repair Request',type:'repair',status:'live',desc:'Validates employee & asset, assesses urgency, assigns loaner, flags for repair, generates confirmation.',steps:5,tools:['fly','fly','fly','fly','gh'],runs:8,isNew:true,
-    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Assess repair urgency',tool:'repair.assess_urgency'},{name:'Check loaner availability',tool:'assets.inventory_check'},{name:'Assign loaner & flag repair',tool:'assets.assign · github.update_asset'},{name:'Generate confirmation',tool:'github.create_issue'}],
-    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Ananya Iyer'},{id:'empId',label:'Employee ID',ph:'e.g. EMP003'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00441'},{id:'issueDesc',label:'Issue',ph:'e.g. Screen damage'}]},
-  {id:'return',name:'Laptop Return',type:'return',status:'live',desc:'Validates employee exit date and asset, clears assignment, updates inventory, flags device for wiping.',steps:5,tools:['fly','fly','fly','gh','gh'],runs:6,isNew:false,
-    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Check return eligibility',tool:'employees.check'},{name:'Clear assignment & update status',tool:'assets.assign · github.update_asset'},{name:'Flag for wiping & inspection',tool:'github.update_asset'},{name:'Generate return confirmation',tool:'github.create_issue'}],
-    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Raj Mehta'},{id:'empId',label:'Employee ID',ph:'e.g. EMP002'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00391'}]},
+// Workflows — populated only after Weave + Deploy this session
+const WFS = [];
+
+// Draft workflows — always visible
+const DRAFT_WFS = [
   {id:'refresh',name:'Laptop Refresh',type:'assign',status:'draft',desc:'Draft — checks device age against refresh policy, validates eligibility, initiates replacement.',steps:4,tools:['fly','fly','gh'],runs:0,isNew:false,
     stepsArr:[{name:'Validate employee & device age',tool:'employees.check · assets.verify'},{name:'Check refresh eligibility',tool:'entitlement.get_tier'},{name:'Initiate replacement order',tool:'assets.assign'},{name:'Generate refresh confirmation',tool:'github.create_issue'}],
     fields:[{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]}
 ];
-const TOOLS=[
-  {name:'employees.check',type:'fly',op:'read',wfs:['Laptop Assignment','Laptop Return','Repair Request'],runs:12,isNew:true},
-  {name:'entitlement.get_tier',type:'fly',op:'read',wfs:['Laptop Assignment'],runs:5,isNew:true},
-  {name:'assets.inventory_check',type:'fly',op:'read',wfs:['Laptop Assignment','Repair Request'],runs:8,isNew:true},
-  {name:'assets.verify',type:'fly',op:'read',wfs:['Repair Request','Laptop Return'],runs:6,isNew:true},
-  {name:'assets.assign',type:'fly',op:'write',wfs:['Laptop Assignment','Repair Request'],runs:5,isNew:true},
-  {name:'repair.assess_urgency',type:'fly',op:'read',wfs:['Repair Request'],runs:4,isNew:true},
-  {name:'ai.suggest_software',type:'ai',op:'action',wfs:['Laptop Assignment'],runs:5,isNew:true},
-  {name:'github.update_asset',type:'gh',op:'write',wfs:['Laptop Assignment','Repair Request','Laptop Return'],runs:9,isNew:false},
-  {name:'github.create_issue',type:'gh',op:'action',wfs:['Laptop Assignment','Repair Request','Laptop Return'],runs:9,isNew:false}
-];
+// Tools — populated only after Builder runs this session
+const TOOLS = [];
 const TICONS={
   fly:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
   ai:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`,
@@ -1013,13 +999,119 @@ async function buildTool(t){
 }
 
 // ── REPO ──
+const WF_TEMPLATES = {
+  assign:{name:'Laptop Assignment',type:'assign',desc:'Validates entitlement, checks inventory, assigns asset, updates CMDB, AI software suggestion, sends confirmation.',
+    stepsArr:[{name:'Validate employee & entitlement',tool:'employees.check · entitlement.get_tier'},{name:'Check asset inventory',tool:'assets.inventory_check'},{name:'Assign asset & update status',tool:'assets.assign'},{name:'Update CMDB & hostname',tool:'github.update_asset'},{name:'AI software suggestion',tool:'ai.suggest_software'},{name:'Generate confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Priya Sharma'},{id:'empId',label:'Employee ID',ph:'e.g. EMP001'},{id:'empRole',label:'Role',type:'select',opts:['Software Engineer','Product Manager','Data Analyst','Sales Executive','HR Manager']},{id:'empLoc',label:'Location',type:'select',opts:['Hyderabad','Bangalore','Mumbai','Chennai']}]},
+  return:{name:'Laptop Return',type:'return',desc:'Validates employee exit date and asset, clears assignment, updates inventory, flags device for wiping.',
+    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Check return eligibility',tool:'employees.check'},{name:'Clear assignment & update status',tool:'assets.assign · github.update_asset'},{name:'Flag for wiping & inspection',tool:'github.update_asset'},{name:'Generate return confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Raj Mehta'},{id:'empId',label:'Employee ID',ph:'e.g. EMP002'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00391'}]},
+  repair:{name:'Repair Request',type:'repair',desc:'Validates employee & asset, assesses urgency, assigns loaner, flags for repair, generates confirmation.',
+    stepsArr:[{name:'Validate employee & asset',tool:'employees.check · assets.verify'},{name:'Assess repair urgency',tool:'repair.assess_urgency'},{name:'Check loaner availability',tool:'assets.inventory_check'},{name:'Assign loaner & flag repair',tool:'assets.assign · github.update_asset'},{name:'Generate confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Ananya Iyer'},{id:'empId',label:'Employee ID',ph:'e.g. EMP003'},{id:'assetTag',label:'Asset Tag',ph:'e.g. TAG-00441'},{id:'issueDesc',label:'Issue',ph:'e.g. Screen damage'}]},
+  refresh:{name:'Laptop Refresh',type:'assign',desc:'Draft — checks device age against refresh policy, validates eligibility, initiates replacement.',
+    stepsArr:[{name:'Validate employee & device age',tool:'employees.check · assets.verify'},{name:'Check refresh eligibility',tool:'entitlement.get_tier'},{name:'Initiate replacement order',tool:'assets.assign'},{name:'Generate refresh confirmation',tool:'github.create_issue'}],
+    fields:[{id:'empName',label:'Employee Name',ph:'e.g. Divya Nair'},{id:'empId',label:'Employee ID',ph:'e.g. EMP005'}]}
+};
+
+const TOOL_TEMPLATES = {
+  'employees.check':{name:'employees.check',type:'fly',op:'read',desc:'Lookup employee by ID or name. Returns role, dept, location, status.'},
+  'entitlement.get_tier':{name:'entitlement.get_tier',type:'fly',op:'read',desc:'Maps employee role to laptop tier (premium / standard).'},
+  'assets.inventory_check':{name:'assets.inventory_check',type:'fly',op:'read',desc:'Filters inventory by tier, location and availability.'},
+  'assets.verify':{name:'assets.verify',type:'fly',op:'read',desc:'Verifies asset tag and confirms assignment.'},
+  'assets.assign':{name:'assets.assign',type:'fly',op:'write',desc:'Updates asset status and employee link. Writes back to GitHub.'},
+  'repair.assess_urgency':{name:'repair.assess_urgency',type:'fly',op:'read',desc:'Scores issue description for urgency level.'},
+  'cmdb.update':{name:'cmdb.update',type:'fly',op:'write',desc:'Links CI record to employee, generates hostname.'},
+  'ai.suggest_software':{name:'ai.suggest_software',type:'ai',op:'action',desc:'Calls Claude API. Returns personalised software bundle.'},
+  'github.update_asset':{name:'github.update_asset',type:'gh',op:'write',desc:'Commits updated assets.json via GitHub Contents API.'},
+  'github.create_issue':{name:'github.create_issue',type:'gh',op:'action',desc:'Creates GitHub issue as audit trail.'}
+};
+
+async function deployWorkflow(){
+  const steps = ALL_BUILDER_STEPS[currentWF]||ALL_BUILDER_STEPS.assign;
+  const tmpl = WF_TEMPLATES[currentWF];
+  if(!tmpl){ goPage('repo'); return; }
+
+  // Build workflow object
+  const wfId = currentWF + '_' + SESSION_ID;
+  const toolIds = [...new Set(steps.flatMap(s=>s.tools.map(t=>t.n)))];
+  const toolTypes = steps.flatMap(s=>s.tools.map(t=>t.t));
+
+  const wf = {
+    id: wfId,
+    name: tmpl.name,
+    type: currentWF,
+    status: 'live',
+    desc: tmpl.desc,
+    steps: steps.length,
+    tools: toolTypes,
+    runs: 0,
+    isNew: true,
+    stepsArr: tmpl.stepsArr,
+    fields: tmpl.fields,
+    deployedAt: new Date().toISOString(),
+    session: SESSION_ID
+  };
+
+  // Add to session WFS
+  const existing = WFS.findIndex(w=>w.type===currentWF);
+  if(existing >= 0) WFS[existing] = wf;
+  else WFS.push(wf);
+
+  // Add tools to TOOLS
+  toolIds.forEach(toolName=>{
+    if(!TOOLS.find(t=>t.name===toolName)){
+      const tmplTool = TOOL_TEMPLATES[toolName];
+      if(tmplTool){
+        TOOLS.push({
+          ...tmplTool,
+          wfs:[tmpl.name],
+          runs:0,
+          isNew:true
+        });
+      }
+    }
+  });
+
+  // Log to GitHub
+  if(GH.token){
+    const body = [
+      `workflow: ${tmpl.name}`,
+      `type: ${currentWF}`,
+      `steps: ${steps.length}`,
+      `tools: ${toolIds.join(', ')}`,
+      `session: ${SESSION_ID}`,
+      `deployed_at: ${new Date().toISOString()}`
+    ].join('\n');
+    GH.createIssue(`[WEAVER] WORKFLOW_DEPLOYED — ${tmpl.name}`, body, ['weaver-workflow', 'deployed', SESSION_ID])
+      .catch(()=>{});
+  }
+
+  builderDone = true;
+  goPage('repo');
+}
+
 function renderRepo(){
-  const f=WFS.filter(w=>{
+  const allWFS=[...WFS,...DRAFT_WFS];
+  const f=allWFS.filter(w=>{
     if(repoFilter==='live'&&w.status!=='live')return false;
     if(repoFilter==='draft'&&w.status!=='draft')return false;
     if(repoSrch&&!w.name.toLowerCase().includes(repoSrch))return false;
     return true;
   });
+  // Update stats
+  const allWFS2 = [...WFS, ...DRAFT_WFS];
+  const liveCount = allWFS2.filter(w=>w.status==='live').length;
+  const draftCount = allWFS2.filter(w=>w.status==='draft').length;
+  const totalRuns = allWFS2.reduce((a,w)=>a+(w.runs||0),0);
+  const t=document.getElementById('repoTotal'); if(t) t.textContent=allWFS2.length;
+  const l=document.getElementById('repoLive'); if(l) l.textContent=liveCount;
+  const d=document.getElementById('repoDraft'); if(d) d.textContent=draftCount;
+  const rn=document.getElementById('rsb-all-n'); if(rn) rn.textContent=allWFS2.length;
+  const rl=document.getElementById('rsb-live-n'); if(rl) rl.textContent=liveCount;
+  const rd=document.getElementById('rsb-draft-n'); if(rd) rd.textContent=draftCount;
+  const ra=document.getElementById('rsb-admin-n'); if(ra) ra.textContent=allWFS2.length;
+
   document.getElementById('wfGrid').innerHTML=f.map(w=>{
     const ib=w.status==='draft'?'wfci-d':w.type==='assign'?'wfci-a':w.type==='return'?'wfci-r':'wfci-x';
     const ic=w.status==='draft'?WFICONS.draft:WFICONS[w.type];
@@ -1031,7 +1123,7 @@ function renderRepo(){
       <div style="display:flex;gap:3px;margin-bottom:8px;">${w.tools.map(t=>`<div style="width:7px;height:7px;border-radius:50%;background:${TC[t]};opacity:0.7;"></div>`).join('')}<span style="font-size:9px;color:var(--muted);margin-left:3px;">${w.tools.length} tools</span></div>
       <div class="wfc-footer"><span class="wfc-runs">${w.runs} runs</span><div style="display:flex;gap:5px;"><button class="btn-edit-sm" onclick="event.stopPropagation()">Edit</button><button class="btn-run-sm ${w.status==='draft'?'dis':''}" onclick="event.stopPropagation();openModal('${w.id}')">▶ Run</button></div></div>
     </div>`;
-  }).join('');
+  }).join('') || '<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;opacity:0.4;gap:12px;"><div style="font-size:32px;">🪡</div><div style="font-size:13px;color:var(--muted);">No workflows yet.</div><div style="font-size:11px;color:var(--muted);">Go to Build and hit Weave to create one.</div></div>';
 }
 function rSbFilter(v,el){repoFilter=v;document.querySelectorAll('.repo-sidebar .sb-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');renderRepo();}
 function repoSearchFn(v){repoSrch=v.toLowerCase();renderRepo();}
@@ -1118,7 +1210,17 @@ function mApprove(){
 }
 
 // ── LIBRARY ──
+function updateLibStats(){
+  const t=document.getElementById('libTotal'); if(t) t.textContent=TOOLS.length;
+  const f=document.getElementById('libFly'); if(f) f.textContent=TOOLS.filter(x=>x.type==='fly').length;
+  const w=document.getElementById('libWfs'); if(w) w.textContent=WFS.length;
+  const r=document.getElementById('libRuns'); if(r) r.textContent=TOOLS.reduce((a,t)=>a+(t.runs||0),0);
+  // Update sidebar counts
+  const sa=document.getElementById('lsb-all'); if(sa) sa.querySelector('.sb-n').textContent=TOOLS.length;
+}
+
 function renderLibrary(){
+  updateLibStats();
   const f=TOOLS.filter(t=>{
     if(libFilters.type&&t.type!==libFilters.type)return false;
     if(libFilters.op&&t.op!==libFilters.op)return false;
@@ -1130,7 +1232,7 @@ function renderLibrary(){
   const ib={fly:'ltci-fly',ai:'ltci-ai',gh:'ltci-gh'};
   const tp={fly:'ltp-fly',ai:'ltp-ai',gh:'ltp-gh'};
   const tl={fly:'On the fly',ai:'Claude API',gh:'GitHub'};
-  document.getElementById('libGrid').innerHTML=f.length?f.map(t=>`<div class="ltc">${t.isNew?'<span class="lnew">NEW</span>':''}<div class="ltc-hdr"><div class="ltci ${ib[t.type]}">${TICONS[t.type]}</div><div class="ltc-name">${t.name}</div></div><div class="ltc-desc">${TOOL_DESCS[t.name]||''}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">${t.wfs.map(w=>`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);">${w.split(' ')[0]}</span>`).join('')}</div><div class="ltc-footer"><span class="ltp ${tp[t.type]}">${tl[t.type]}</span><span class="ltc-runs">${t.runs} runs</span></div></div>`).join(''):`<div style="grid-column:1/-1;text-align:center;padding:2rem;font-size:11px;color:var(--muted);opacity:0.4;">No tools match your filters.</div>`;
+  document.getElementById('libGrid').innerHTML=f.length?f.map(t=>`<div class="ltc">${t.isNew?'<span class="lnew">NEW</span>':''}<div class="ltc-hdr"><div class="ltci ${ib[t.type]}">${TICONS[t.type]}</div><div class="ltc-name">${t.name}</div></div><div class="ltc-desc">${TOOL_DESCS[t.name]||''}</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">${t.wfs.map(w=>`<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border);">${w.split(' ')[0]}</span>`).join('')}</div><div class="ltc-footer"><span class="ltp ${tp[t.type]}">${tl[t.type]}</span><span class="ltc-runs">${t.runs} runs</span></div></div>`).join(''):'<div style="grid-column:1/-1;text-align:center;padding:2rem;font-size:11px;color:var(--muted);opacity:0.4;">No tools match your filters.</div>';
 }
 function lSbFilter(dim,val,el){document.querySelectorAll('.lib-sidebar .sb-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');libFilters={type:null,op:null,wf:null};document.querySelectorAll('.lfb').forEach(b=>b.classList.remove('active'));if(val!=='all')libFilters[dim]=val;renderLibrary();}
 function lToggleFilter(dim,val,el){if(libFilters[dim]===val){libFilters[dim]=null;el.classList.remove('active');}else{if(libFilters[dim])document.querySelector(`.lfb[onclick*="'${libFilters[dim]}'"]`)?.classList.remove('active');libFilters[dim]=val;el.classList.add('active');}renderLibrary();}
