@@ -343,6 +343,55 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 .rs{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;}
 .btn-approve{width:100%;padding:7px;background:var(--green);border:none;color:#0a0e13;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px;display:block;}
 .btn-approve:hover{background:#5affc0;}
+
+/* ── MODAL EXECUTION PANEL ── */
+.mc-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.mc-form{width:195px;border-right:1px solid var(--border);padding:0.85rem;overflow-y:auto;flex-shrink:0;}
+.mc-exec{flex:1;padding:0.85rem;overflow-y:auto;}
+.ff{margin-bottom:7px;}
+.fl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.fi{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.fi:focus{border-color:var(--border2);}
+.fi::placeholder{color:var(--muted);}
+.fs{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit;outline:none;}
+.fs option{background:var(--surf);}
+.btn-exec{width:100%;padding:7px;background:var(--amber);border:none;color:#0a0e13;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px;}
+.btn-exec:hover{background:#ffc060;}
+.exec-step{display:flex;align-items:flex-start;gap:5px;margin-bottom:6px;}
+.esi{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.esi-p{background:rgba(61,255,160,0.12);}
+.esi-w{background:rgba(255,170,61,0.12);}
+.esi-r{background:rgba(90,180,255,0.12);animation:pulse 1s ease-in-out infinite;}
+.esn{font-size:11px;font-weight:500;}
+.esrb{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;margin-top:2px;display:inline-block;}
+.esrb-p{background:rgba(61,255,160,0.1);color:var(--green);}
+.esrb-w{background:rgba(255,170,61,0.1);color:var(--amber);}
+.esd{font-size:10px;color:var(--muted);padding-left:19px;line-height:1.4;margin-top:1px;}
+.idle-hint{display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;opacity:0.3;gap:6px;}
+.btn-approve{padding:6px 14px;background:var(--green);border:none;color:#0a0e13;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;display:block;width:100%;}
+.btn-approve:hover{background:#5affc0;}
+/* ── FULFILLER EXECUTION PANEL ── */
+.subj{margin-bottom:0.85rem;padding-bottom:0.85rem;border-bottom:1px solid var(--border);}
+.subj-name{font-size:12px;font-weight:500;}
+.subj-time{font-size:9px;color:var(--muted);margin-top:2px;font-family:monospace;}
+.sl{font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.step{margin-bottom:9px;}
+.step-hdr{display:flex;align-items:flex-start;gap:6px;margin-bottom:3px;}
+.si{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.si-p{background:rgba(61,255,160,0.12);}
+.si-w{background:rgba(255,170,61,0.12);}
+.si-r{background:rgba(90,180,255,0.12);animation:pulse 1s ease-in-out infinite;}
+.sn{font-size:11px;font-weight:500;}
+.srb{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;margin-top:1px;display:inline-block;}
+.srb-p{background:rgba(61,255,160,0.1);color:var(--green);}
+.srb-w{background:rgba(255,170,61,0.1);color:var(--amber);}
+.sd{font-size:10px;color:var(--muted);line-height:1.5;padding-left:22px;margin-top:2px;}
+.rating{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);}
+.rl{font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.rb-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;}
+.rb-ok{background:rgba(61,255,160,0.1);color:var(--green);border:1px solid var(--green-dim);}
+.rb-warn{background:rgba(255,170,61,0.1);color:var(--amber);border:1px solid rgba(255,170,61,0.3);}
+.rs{font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;}
 </style>
 </head>
 <body>
@@ -355,7 +404,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
   </div>
   <div class="nav-tabs" id="navTabs">
     <div class="ntab active" onclick="goPage('build')">Build</div>
-    <div class="ntab dim" onclick="goPage('builder')">Workflow Builder</div>
     <div class="ntab dim" onclick="goPage('repo')">Workflow Repository</div>
     <div class="ntab dim" onclick="goPage('library')">Library</div>
   </div>
@@ -1086,10 +1134,20 @@ function libSearchFn(v){libSrch=v.toLowerCase();renderLibrary();}
 function ackAndClose(btn, reqId){
   btn.textContent = '✓ Acknowledged';
   btn.disabled = true;
-  // Mark request as closed
   if(reqId){
     const req = empReqs.find(r=>String(r.id)===String(reqId));
-    if(req){ req.status='closed'; updateEmpBadge(reqId,'erb-closed','CLOSED'); }
+    if(req){
+      req.status='closed';
+      updateEmpBadge(req.id,'erb-closed','CLOSED');
+      // Close GitHub issue — Employee has acknowledged
+      if(GH.token && req.ghIssueNumber){
+        GH.closeIssue(req.ghIssueNumber)
+          .then(()=> GH.addComment(req.ghIssueNumber, `✅ Acknowledged by Priya Sharma at ${new Date().toLocaleString()}
+
+Request closed.`).catch(()=>{}))
+          .catch(()=>{});
+      }
+    }
   }
 }
 
@@ -1112,16 +1170,16 @@ function initEmployeePage(){
     const hasOpenTask = empReqs.some(r => r.status === 'pending' || r.status === 'auto');
     if(hasOpenTask){
       pendingFulfillerEvent = null;
-      setTimeout(()=> fireEmpEvent(e.type, e.name, e.asset, e.ref), 800);
+      setTimeout(()=> fireEmpEvent(e.type, e.name, e.asset, e.ref, e.ghIssueNumber), 800);
     }
   }
 }
 
-function fireEmpEvent(type, name, asset, ref){
-  if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref});
-  else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref});
-  else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref});
-  else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref});
+function fireEmpEvent(type, name, asset, ref, ghIssueNumber){
+  if(type==='ASSIGNED') WeaverEvents.emit('laptop_assigned',{name,asset,model:'MacBook Pro 14 M3',ref,ghIssueNumber});
+  else if(type==='REPAIR') WeaverEvents.emit('repair_approved',{name,asset,loaner:'TAG-00600 (MacBook Air M2)',ref,ghIssueNumber});
+  else if(type==='RETURNED') WeaverEvents.emit('return_processed',{name,asset,ref,ghIssueNumber});
+  else if(type==='REFRESH') WeaverEvents.emit('refresh_processed',{name,asset,ref,ghIssueNumber});
 }
 
 function preloadSidebar(){
@@ -1194,7 +1252,8 @@ async function handleFulfillerEvent(type, data){
   if(type === 'laptop_assigned'){
     const req = empReqs.find(r=>r.label==='Laptop Assignment'&&r.status==='pending');
     if(req){
-      req.status='done'; req.asset=data.asset||'TAG-00581'; req.model=data.model||'MacBook Pro 14 M3'; req.ref=data.ref;
+      req.status='done'; req.asset=data.asset||'TAG-00581'; req.model=data.model||'MacBook Pro 14 M3';
+      req.ref=data.ref; req.ghIssueNumber=data.ghIssueNumber||null;
       updateEmpBadge(req.id,'erb-done','DONE');
       flashSidebarItem(req.id);
     }
@@ -1202,7 +1261,7 @@ async function handleFulfillerEvent(type, data){
   else if(type === 'repair_approved'){
     const req = empReqs.find(r=>r.label==='Repair Request'&&r.status==='pending');
     if(req){
-      req.status='done'; req.loaner=data.loaner; req.ref=data.ref;
+      req.status='done'; req.loaner=data.loaner; req.ref=data.ref; req.ghIssueNumber=data.ghIssueNumber||null;
       updateEmpBadge(req.id,'erb-done','DONE');
       flashSidebarItem(req.id);
     }
@@ -1332,8 +1391,7 @@ timestamp: ${new Date().toISOString()}`;
     GH.createIssue(`[WEAVER] ${type==='return'?'RETURN_PROCESSED':'REFRESH_PROCESSED'} — Priya Sharma`, ghBody, ['weaver-event', eventLabel])
       .then(iss=>{
         if(iss && iss.number){
-          reqObj.ghIssueNumber = iss.number; // store on reqObj for later comment use
-          GH.closeIssue(iss.number).catch(()=>{});
+          reqObj.ghIssueNumber = iss.number; // leave OPEN until Employee acknowledges
         }
       }).catch(()=>{});
   }
@@ -1612,19 +1670,19 @@ async function fApprove(id,type,name,asset){
     ]);
     const url = issue.html_url || `https://github.com/kllmmeghana/weaver-assets/issues`;
     const num = issue.number || '?';
-    if(issue.number) GH.closeIssue(issue.number).catch(()=>{});
+    // Leave issue OPEN — will be closed when Employee acknowledges
     const approveMsg = document.getElementById('fApproveMsg');
     if(approveMsg) approveMsg.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;line-height:1.65;"><span style="color:var(--green)">✓ Approved — ${ref}</span><br><span style="font-size:10px;color:var(--muted);">Employee will be notified shortly.</span></div>`;
     else fAddA(`<span style="color:var(--green)">✓ Approved — ${ref}</span><br><span style="font-size:10px;color:var(--muted);">Employee will be notified shortly.</span>`);
 
-    // Queue event — fires when Employee page opens
-    pendingFulfillerEvent = {type, name, asset, ref};
+    // Queue event with issue number — fires when Employee page opens
+    pendingFulfillerEvent = {type, name, asset, ref, ghIssueNumber: issue.number||null};
 
   } catch(e){
     const approveMsg2 = document.getElementById('fApproveMsg');
     if(approveMsg2) approveMsg2.innerHTML = `<div style="background:var(--surf);border:1px solid var(--border);border-radius:10px 10px 10px 2px;padding:9px 12px;font-size:12px;"><span style="color:var(--green)">✓ Approved — notifying employee.</span></div>`;
     else fAddA(`<span style="color:var(--green)">✓ Approved — notifying employee.</span>`);
-    pendingFulfillerEvent = {type, name, asset, ref};
+    pendingFulfillerEvent = {type, name, asset, ref, ghIssueNumber: null};
   }
 }
 
