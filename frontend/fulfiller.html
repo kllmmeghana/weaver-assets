@@ -74,7 +74,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans','Segoe UI',san
 .hero-title strong{color:var(--green);font-weight:500;}
 .hero-sub{font-size:12px;color:var(--muted);margin-top:5px;}
 .slabel{font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;margin-top:1.25rem;}
-.prompt-ta{width:100%;min-height:100px;padding:0.85rem 1rem;background:var(--surf);border:1px solid var(--green);border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;line-height:1.7;resize:none;outline:none;}
+.prompt-ta{width:100%;min-height:160px;padding:0.85rem 1rem;background:var(--surf);border:1px solid var(--green);border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;line-height:1.7;resize:vertical;outline:none;}
 .wf-tabs{display:flex;gap:7px;margin-top:0.85rem;flex-wrap:wrap;}
 .wftab{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.1s;font-family:inherit;}
 .wftab:hover{border-color:var(--border2);color:var(--mid);}
@@ -854,11 +854,14 @@ const WFICONS={
   draft:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
 };
 const TC={fly:'var(--purple)',ai:'var(--amber)',gh:'var(--blue)'};
-let currentRole='admin',repoFilter='all',repoSrch='',libFilters={type:null,op:null,wf:null},libSrch='',issueN=9,empReqs=[],empRN=0,repairPhase='',builderDone=false;
+let currentRole='admin',repoFilter='all',repoSrch='',libFilters={type:null,op:null,wf:null},libSrch='',issueN=9,empReqs=[],empRN=0,repairPhase='',builderDone=false,weaverTriggered=false;
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── NAV ──
 function goPage(p){
+  // Builder only accessible via Weave button
+  if(p==='builder' && !weaverTriggered){ goPage('build'); return; }
+  if(p!=='builder') weaverTriggered=false; // reset when leaving builder
   if(currentRole==='employee' && p!=='employee') stopGHPolling();
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
@@ -873,9 +876,9 @@ function updateNavTabs(active){
     const ps=['build','builder','repo','library'],ls=['Build','Workflow Builder','Workflow Repository','Library'];
     t.innerHTML=ps.map((p,i)=>{
       const isActive = p===active;
-      // Only disable builder tab if building is in progress
-      const isDisabled = p==='builder' && !builderDone && active==='builder';
-      return `<div class="ntab ${isActive?'active':''}" style="${isDisabled?'opacity:0.4;pointer-events:none;':''}" onclick="goPage('${p}')">${ls[i]}</div>`;
+      // Hide builder tab entirely unless currently on it
+      if(p==='builder' && active!=='builder') return '';
+      return `<div class="ntab ${isActive?'active':''}" onclick="goPage('${p}')">${ls[i]}</div>`;
     }).join('');
   }else if(currentRole==='fulfiller'){
     t.innerHTML=`<div class="ntab" style="color:var(--amber);border-bottom:2px solid var(--amber);">Fulfiller</div>`;
@@ -900,6 +903,7 @@ function setWF(el,k){document.querySelectorAll('.wftab').forEach(t=>t.classList.
 function hitWeave(){
   if(!document.getElementById('promptTa').value.trim()){alert('Please describe your workflow first');return;}
   builderDone=false;
+  weaverTriggered=true;
   goPage('builder');
 }
 
@@ -1090,10 +1094,11 @@ function ackAndClose(btn, reqId){
 }
 
 function clearEmpChat(){
+  // Only clear the chat messages — keep sidebar requests intact
   document.getElementById('empMsgs').innerHTML=`<div class="ema"><div class="ewbadge"><span class="ewdot"></span>Weaver</div><div class="eba">Hi Priya 👋 What can I help you with?<br><br>• 🔧 Raise a repair request<br>• ↩ Return your laptop<br>• 🔄 Request a laptop refresh<br>• 📋 Check request status</div></div>`;
-  document.getElementById('empReqList').innerHTML=`<div style="font-size:10px;color:var(--muted);padding:8px;text-align:center;opacity:0.4;">No requests yet</div>`;
-  empReqs=[];empRN=0;repairPhase='';
-  WeaverEvents.fired.clear();
+  repairPhase='';
+  // Deselect sidebar item
+  document.querySelectorAll('.eri').forEach(e=>e.classList.remove('active'));
   setEmpQR();
 }
 
@@ -1261,46 +1266,93 @@ async function raiseEmpRepair(issue){
   setEmpQR();
 }
 async function raiseEmpAuto(type){
-  empRN++;const id=empRN;const ref=`WVR-${String(id).padStart(4,'0')}`;
+  empRN++;
+  const id=empRN;
+  const ref=`WVR-${String(id).padStart(4,'0')}`;
   const label=type==='return'?'Laptop Return':'Laptop Refresh';
-  empReqs.push({id,label,status:'auto'});
+
+  // Add to sidebar and empReqs
+  const reqObj = {id,label,status:'auto',ref};
+  empReqs.push(reqObj);
   addEmpSidebar(id,label,'erb-auto','AUTO');
-  eAddNode(`<div class="sub-card"><div class="sc-title"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Auto-processing</div><div class="sc-row"><span class="sc-label">Type</span><span class="sc-val">${label}</span></div><div class="sc-row"><span class="sc-label">Asset</span><span class="sc-val">TAG-00581</span></div><div class="sc-row"><span class="sc-label">Ref</span><span class="sc-val">${ref}</span></div><div class="sc-footer"><span class="sp sp-auto">⚡ Auto-running</span></div></div>`);
+
+  // Show submission card in chat
+  eAddNode(`<div class="sub-card">
+    <div class="sc-title"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Auto-processing</div>
+    <div class="sc-row"><span class="sc-label">Type</span><span class="sc-val">${label}</span></div>
+    <div class="sc-row"><span class="sc-label">Asset</span><span class="sc-val">TAG-00581</span></div>
+    <div class="sc-row"><span class="sc-label">Ref</span><span class="sc-val">${ref}</span></div>
+    <div class="sc-footer"><span class="sp sp-auto">⚡ Auto-running</span></div>
+  </div>`);
   eAddA(`Request submitted — we'll take it from here. Checklist coming up shortly.`);
+
+  // Wait 2 seconds (simulate processing)
   await sleep(2000);
-  // Log to GitHub async — never blocks UI
-  let ghIssueNumber = null;
-  setTimeout(()=>{
-    if(GH.token){
-      const raisedBy = 'Employee';
-      const ghBody = `name: Priya Sharma\nasset: TAG-00581\ntype: ${type.toUpperCase()}\nref: ${ref}\nraised_by: ${raisedBy}\ntimestamp: ${new Date().toISOString()}`;
-      const eventLabel = type==='return'?'return_processed':'refresh_processed';
-      GH.createIssue(`[WEAVER] ${type==='return'?'RETURN_PROCESSED':'REFRESH_PROCESSED'} — Priya Sharma`, ghBody, ['weaver-event', eventLabel])
-        .then(iss=>{ if(iss&&iss.number){ ghIssueNumber=iss.number; GH.closeIssue(iss.number).catch(()=>{}); } })
-        .catch(()=>{});
-    }
-  }, 100);
+
+  // Update status
   updateEmpBadge(id,'erb-done','DONE');
-  empReqs.find(r=>r.id===id).status='done';
+  reqObj.status='done';
+
+  // Show checklist
   eAddA(`✓ Done! Here's what you need to do:`);
   await sleep(300);
+
   if(type==='return'){
-    eAddNode(`<div class="checklist"><div class="cl-title">↩ Laptop Return — ${ref}</div>${['Pack the laptop in its original box or sleeve','Drop it at the Hyderabad DT desk','Collect your return receipt from the DT team'].map((t,i)=>`<div class="cl-item" id="cl${id}-${i}" onclick="tglChecklist(this,'${ref}','${t}',()=>ghIssueNumber)"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">${t}</div></div>`).join('')}<div class="cl-ref">Ref: ${ref}</div></div>`);
-  }else{
-    eAddNode(`<div class="checklist"><div class="cl-title">🔄 Laptop Refresh — ${ref}</div>${['Back up your files to OneDrive before handover','Note any software you want on the new device','Drop old laptop at the Hyderabad DT desk','Collect your new device — ready for pickup'].map((t,i)=>`<div class="cl-item" id="cl${id}-${i}" onclick="tglChecklist(this,'${ref}','${t}',()=>ghIssueNumber)"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">${t}</div></div>`).join('')}<div class="cl-ref">Ref: ${ref}</div></div>`);
-    await sleep(400);eAddA(`What software would you like on your new device?`);await sleep(200);showSoftware();
+    eAddNode(`<div class="checklist">
+      <div class="cl-title">↩ Laptop Return — ${ref}</div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Pack the laptop in its original box or sleeve','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Pack the laptop in its original box or sleeve</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Drop it at the Hyderabad DT desk','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Drop it at the Hyderabad DT desk</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Collect your return receipt from the DT team','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Collect your return receipt from the DT team</div></div>
+      <div class="cl-ref">Ref: ${ref}</div>
+    </div>`);
+  } else {
+    eAddNode(`<div class="checklist">
+      <div class="cl-title">🔄 Laptop Refresh — ${ref}</div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Back up your files to OneDrive before handover','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Back up your files to OneDrive before handover</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Note any software you want on the new device','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Note any software you want on the new device</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Drop old laptop at the Hyderabad DT desk','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Drop old laptop at the Hyderabad DT desk</div></div>
+      <div class="cl-item" onclick="tglChecklist(this,'${ref}','Collect your new device — ready for pickup','${id}')"><div class="cl-chk"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0a0e13" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="cl-text">Collect your new device — ready for pickup</div></div>
+      <div class="cl-ref">Ref: ${ref}</div>
+    </div>`);
+    await sleep(400);
+    eAddA(`What software would you like on your new device?`);
+    await sleep(200);
+    showSoftware();
   }
+
+  // Log to GitHub — fire and forget, never blocks
+  if(GH.token){
+    const ghBody = `name: Priya Sharma
+asset: TAG-00581
+type: ${type.toUpperCase()}
+ref: ${ref}
+raised_by: Employee
+timestamp: ${new Date().toISOString()}`;
+    const eventLabel = type==='return'?'return_processed':'refresh_processed';
+    GH.createIssue(`[WEAVER] ${type==='return'?'RETURN_PROCESSED':'REFRESH_PROCESSED'} — Priya Sharma`, ghBody, ['weaver-event', eventLabel])
+      .then(iss=>{
+        if(iss && iss.number){
+          reqObj.ghIssueNumber = iss.number; // store on reqObj for later comment use
+          GH.closeIssue(iss.number).catch(()=>{});
+        }
+      }).catch(()=>{});
+  }
+
   setEmpQR();
 }
-function tglChecklist(el, ref, task, getIssueNum){
+function tglChecklist(el, ref, task, reqId){
   el.classList.toggle('chk');
   const checked = el.classList.contains('chk');
-  // Post comment to GitHub issue
-  if(GH.token && getIssueNum && getIssueNum()){
-    const comment = checked
-      ? `✅ **Checklist item completed** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`
-      : `↩ **Checklist item unchecked** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`;
-    GH.addComment(getIssueNum(), comment).catch(()=>{});
+  // Post comment to GitHub issue if we have the issue number
+  if(GH.token){
+    const req = empReqs.find(r=>String(r.id)===String(reqId));
+    const issueNum = req && req.ghIssueNumber;
+    if(issueNum){
+      const comment = checked
+        ? `✅ **Checklist item completed** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`
+        : `↩ **Checklist item unchecked** by Priya Sharma\n\n> ${task}\n\nRef: ${ref}`;
+      GH.addComment(issueNum, comment).catch(()=>{});
+    }
   }
 }
 
